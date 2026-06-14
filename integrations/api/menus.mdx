@@ -14,6 +14,10 @@ L'API menus expose deux endpoints : la **liste** des menus web et le **détail**
 Le `menu_type_slug` est **stable par établissement** (ex. `menu-du-midi`). Vous pouvez le coder en dur dans votre intégration. Si le menu n'existe pas (ou n'a pas de version courante), l'API renvoie `404 {"error":"Not found"}`.
 </Note>
 
+## Origine du menu
+
+Un menu a l'une de deux **origines**, signalée par le champ `menu_type.source` : **`generated`** (menu structuré dans Le Commis — `sections` et items renseignés) ou **`uploaded`** (menu importé en image ou PDF — `sections` vide, contenu uniquement dans `assets`).
+
 ## Menu courant et méthode de diffusion
 
 L'API n'expose que le **menu courant** de chaque type de menu, et uniquement les types de menu diffusés sur le **web**.
