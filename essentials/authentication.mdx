@@ -1,0 +1,112 @@
+---
+title: "Authentification"
+description: "Authentifiez vos appels à l'API publique Le Commis avec une clé par établissement."
+---
+
+L'API publique Le Commis s'authentifie avec une **clé d'API par établissement**, transmise dans l'en-tête HTTP `X-Api-Key`. Chaque requête vers `https://app.lecommis.fr/api/v1` doit porter cet en-tête.
+
+## L'en-tête `X-Api-Key`
+
+Toutes les requêtes API nécessitent l'en-tête `X-Api-Key` avec la clé de l'établissement concerné.
+
+```bash Exemple de requête
+curl https://app.lecommis.fr/api/v1/establishments/au-bistrot \
+  -H "X-Api-Key: $LECOMMIS_API_KEY"
+```
+
+<ParamField header="X-Api-Key" type="string" required>
+  Clé d'API de l'établissement. La comparaison est effectuée à temps constant (SHA256 + comparaison sécurisée).
+</ParamField>
+
+La clé est **propre à un établissement** : une clé donne accès aux données d'un seul établissement, identifié par son `slug` dans l'URL. Elle est stockée **chiffrée** côté Le Commis.
+
+## Une clé serveur-à-serveur
+
+La clé d'API est un secret destiné à un usage **serveur-à-serveur**. Utilisez-la depuis votre backend (un script, un job, une fonction serverless), jamais depuis le navigateur.
+
+<Warning>
+  N'exposez **jamais** votre clé d'API côté client : code JavaScript de navigateur, application mobile distribuée, dépôt Git public, variables de build front-end. Une clé exposée donne un accès en lecture aux données de votre établissement et doit être révoquée immédiatement.
+</Warning>
+
+<Tip>
+  Stockez la clé dans une variable d'environnement plutôt qu'en dur dans votre code.
+
+  ```bash
+  export LECOMMIS_API_KEY="votre-cle-ici"
+  ```
+
+  ```js JavaScript
+  const response = await fetch(
+    "https://app.lecommis.fr/api/v1/establishments/au-bistrot",
+    {
+      headers: {
+        "X-Api-Key": process.env.LECOMMIS_API_KEY,
+      },
+    },
+  );
+  ```
+</Tip>
+
+## Activation et rotation
+
+L'API publique d'un établissement doit être **activée** pour répondre. Tant qu'elle est désactivée, tous les appels renvoient un `404` (voir ci-dessous).
+
+<Note>
+  Seul l'**administrateur de l'établissement** peut activer ou désactiver l'API publique et régénérer la clé. Ces actions se font depuis la page **« réglages API »** de l'établissement. Si vous ne voyez pas ces options, demandez à l'administrateur de votre établissement.
+</Note>
+
+<Steps>
+  <Step title="Activer l'API publique">
+    Depuis la page « réglages API » de l'établissement, l'administrateur active l'API publique (`public_api_enabled`). La clé d'API y est affichée.
+  </Step>
+  <Step title="Récupérer la clé">
+    Copiez la clé et stockez-la dans le coffre de secrets de votre backend (variable d'environnement, gestionnaire de secrets).
+  </Step>
+  <Step title="Faire tourner la clé si besoin">
+    En cas de compromission, l'administrateur régénère la clé (`regenerate_api_key`) depuis la page « réglages API » de l'établissement. L'ancienne clé est immédiatement invalidée ; pensez à mettre à jour votre backend.
+  </Step>
+</Steps>
+
+## Réponses d'authentification
+
+| Situation | Code HTTP | Corps |
+| --- | --- | --- |
+| Clé valide, API activée | `200` | la ressource demandée |
+| Clé absente ou invalide | `401` | `{ "error": "Unauthorized" }` |
+| API désactivée, ou slug inconnu | `404` | `{ "error": "Not found" }` |
+
+### Pourquoi un `404` et non un `403` ?
+
+Lorsque l'API publique d'un établissement est **désactivée** (ou que le `slug` n'existe pas), l'API renvoie volontairement un `404 Not found` — et non un `403 Forbidden`.
+
+<Info>
+  Ce choix est délibéré : un `403` confirmerait l'existence de l'établissement. Le `404` **masque l'existence** de la ressource, comme s'il n'y avait rien à cette adresse. Vous ne pouvez donc pas distinguer « établissement inexistant » de « API non activée » — c'est voulu.
+</Info>
+
+Concrètement :
+
+- **`401`** signale un problème de **clé** (absente ou invalide) sur une cible qui existe et dont l'API est activée.
+- **`404`** signale que la **cible** n'est pas accessible : slug inconnu **ou** API désactivée.
+
+```json 401 Unauthorized
+{
+  "error": "Unauthorized"
+}
+```
+
+```json 404 Not found
+{
+  "error": "Not found"
+}
+```
+
+## Étapes suivantes
+
+<CardGroup cols={2}>
+  <Card title="Quotas de requêtes" icon="gauge-high" href="/essentials/rate-limiting">
+    120 requêtes/heure par clé : comprendre et gérer les quotas de requêtes.
+  </Card>
+  <Card title="Gestion des erreurs" icon="triangle-exclamation" href="/essentials/errors">
+    Format d'erreur et codes HTTP renvoyés par l'API.
+  </Card>
+</CardGroup>

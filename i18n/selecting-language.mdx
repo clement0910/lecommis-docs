@@ -1,0 +1,100 @@
+---
+title: "Choisir la langue"
+description: "Demander le contenu de menu en français ou en anglais avec le paramètre ?locale."
+---
+
+La langue du contenu se choisit avec le query param **`?locale`**. Il accepte deux valeurs : **`fr`** et **`en`**.
+
+<Note>
+Seuls les endpoints menus consomment la locale :
+
+- `GET /api/v1/establishments/{slug}/menus`
+- `GET /api/v1/establishments/{slug}/menus/{menu_type_slug}`
+- la redirection de fichier `GET /r/menus` (avec `&locale=`)
+
+Les endpoints `establishment` et `hours` **ne sont pas localisés** : leur passer `?locale` n'a aucun effet.
+</Note>
+
+## Valeur par défaut et valeurs invalides
+
+| Entrée | Résultat |
+| --- | --- |
+| `?locale` absent | Contenu en **`fr`** |
+| `?locale=fr` | Contenu en **`fr`** |
+| `?locale=en` | Contenu en **`en`** (repli FR par champ manquant) |
+| `?locale=de`, `?locale=es`, … | **Coercé en `fr`** sans erreur |
+
+Une locale inconnue ne renvoie **jamais** d'erreur 400/422 : elle est ramenée silencieusement à `fr`. Si vous voulez détecter une faute de frappe côté intégrateur, validez la valeur **avant** l'appel.
+
+## Exemples
+
+<CodeGroup>
+
+```bash Français (défaut)
+curl -s "https://app.lecommis.fr/api/v1/establishments/au-bistrot/menus/menu-du-midi" \
+  -H "X-Api-Key: $LECOMMIS_API_KEY"
+```
+
+```bash Français (explicite)
+curl -s "https://app.lecommis.fr/api/v1/establishments/au-bistrot/menus/menu-du-midi?locale=fr" \
+  -H "X-Api-Key: $LECOMMIS_API_KEY"
+```
+
+```bash Anglais
+curl -s "https://app.lecommis.fr/api/v1/establishments/au-bistrot/menus/menu-du-midi?locale=en" \
+  -H "X-Api-Key: $LECOMMIS_API_KEY"
+```
+
+</CodeGroup>
+
+La même réponse en `en` renvoie les `name` / `description` des items et les `name` des sections traduits. Tout champ non traduit retombe sur le texte français (voir [Comportement de repli](/i18n/fallback-behavior)).
+
+```json Détail de menu en anglais (extrait)
+{
+  "content_revision": 67,
+  "menu_type": { "slug": "menu-du-midi", "name": "Menu du midi", "kind": "menu" },
+  "sections": [
+    {
+      "name": "Starters",
+      "position": 1,
+      "items": [
+        {
+          "id": 42,
+          "name": "Caesar salad",
+          "description": "Romaine, parmesan, croutons, Caesar dressing",
+          "price": "12.50",
+          "a_la_carte": true,
+          "vegetarian": true
+        }
+      ]
+    }
+  ]
+}
+```
+
+<Warning>
+Le `menu_type.name` n'est pas un champ de contenu localisé de la même façon : ne vous attendez pas à ce que tous les libellés structurels soient traduits. Seuls les noms/descriptions d'items et les noms de sections sont garantis localisables. Affichez ce que l'API renvoie réellement.
+</Warning>
+
+## Liste des menus (index)
+
+L'index accepte aussi `?locale`. Sans ce paramètre, la liste renvoie **tous** les `language_scope` des fichiers du menu (champ `assets`) ; avec une locale, le contenu textuel suit la langue demandée.
+
+```bash
+curl -s "https://app.lecommis.fr/api/v1/establishments/au-bistrot/menus?locale=en" \
+  -H "X-Api-Key: $LECOMMIS_API_KEY"
+```
+
+## Redirection de fichier
+
+Pour servir directement le fichier d'un menu dans une langue donnée :
+
+```html
+<img
+  src="https://app.lecommis.fr/r/menus?establishment=au-bistrot&menu_type=menu-du-midi&locale=en"
+  alt="Lunch menu" />
+```
+
+<Note>
+Contrairement au contenu JSON, les fichiers du menu (champ `assets`) **n'ont pas de repli** : si aucun fichier ne couvre la locale demandée, la redirection renvoie un 404. Voir [Comportement de repli](/i18n/fallback-behavior).
+</Note>

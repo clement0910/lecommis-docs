@@ -1,0 +1,82 @@
+---
+title: "API publique"
+description: "Lire l'identité, les horaires et les menus d'un établissement en JSON, en lecture seule."
+---
+
+L'API publique Le Commis expose les informations d'un établissement (identité, horaires, menus web) sous forme de **JSON**, en **lecture seule** (GET uniquement). Elle est conçue pour être consommée depuis un **backend** : site vitrine, build statique (Astro, Eleventy, Next…), plugin WordPress, ou tout intégrateur qui veut afficher les menus à jour sans recopier les données à la main.
+
+## Base URL
+
+```text
+https://app.lecommis.fr/api/v1
+```
+
+Le serveur OpenAPI est `https://app.lecommis.fr` ; le préfixe `/api/v1` fait partie de chaque chemin.
+
+<Note>
+Toutes les routes partagent la même base URL `https://app.lecommis.fr/api/v1`. Chaque chemin documenté ici s'y ajoute (ex. `/establishments/au-bistrot`).
+</Note>
+
+L'API est **désactivée par défaut**. Elle doit d'abord être activée par l'**administrateur de l'établissement**, depuis la page **Réglages → API**, qui génère également la clé d'accès.
+
+## Principes
+
+<CardGroup cols={2}>
+  <Card title="Tenant par slug" icon="building">
+    Chaque établissement est identifié par son **slug** (ex. `au-bistrot`), jamais par un identifiant numérique.
+  </Card>
+  <Card title="Réponse à plat" icon="braces">
+    Pas d'enveloppe `data`/`meta` : la ressource sérialisée **est** la racine du JSON.
+  </Card>
+  <Card title="Lecture seule" icon="lock">
+    Uniquement des requêtes `GET`. Aucune écriture via l'API.
+  </Card>
+  <Card title="Pas de pagination" icon="list">
+    Ni pagination, ni `includes`, ni sparse-fields, ni filtres. Le seul query param est `?locale`.
+  </Card>
+</CardGroup>
+
+## Authentification
+
+Chaque requête doit porter le header `X-Api-Key` avec la clé de l'établissement. C'est une clé **serveur-à-serveur** : ne l'exposez jamais dans du JavaScript navigateur.
+
+```bash Exemple d'appel
+curl https://app.lecommis.fr/api/v1/establishments/au-bistrot \
+  -H "X-Api-Key: VOTRE_CLE_API"
+```
+
+Détails complets (activation, rotation, codes 401/404) sur la page [Authentification](/essentials/authentication).
+
+## Les 4 endpoints
+
+| Méthode | Chemin | Description |
+| --- | --- | --- |
+| `GET` | `/establishments/{slug}` | Identité de l'établissement |
+| `GET` | `/establishments/{slug}/hours` | Horaires (réguliers + exceptionnels à venir) |
+| `GET` | `/establishments/{slug}/menus` | Liste des menus web |
+| `GET` | `/establishments/{slug}/menus/{menu_type_slug}` | Détail d'un menu (sections + items) |
+
+<Note>
+Le seul paramètre de requête disponible est `?locale=fr|en`, et uniquement sur les endpoints **menus** (liste et détail). Voir [Sélection de la langue](/i18n/selecting-language).
+</Note>
+
+## Pour aller plus loin
+
+<CardGroup cols={2}>
+  <Card title="Établissement" icon="building" href="/integrations/api/establishment">
+    Identité, contact, localisation, logo.
+  </Card>
+  <Card title="Horaires" icon="clock" href="/integrations/api/hours">
+    Horaires réguliers et exceptionnels.
+  </Card>
+  <Card title="Menus" icon="utensils" href="/integrations/api/menus">
+    Liste des menus, sections et items.
+  </Card>
+  <Card title="content_revision" icon="rotate" href="/integrations/api/content-revision">
+    Détecter les changements et invalider votre cache.
+  </Card>
+</CardGroup>
+
+<Note>
+Consultez aussi les [quotas de requêtes](/essentials/rate-limiting), le [format des erreurs](/essentials/errors), et l'onglet **API Reference** pour le playground interactif : [/api-reference](/api-reference).
+</Note>

@@ -1,0 +1,60 @@
+---
+title: "Changelog"
+description: "Historique des évolutions de l'API publique, des redirections de fichiers et des webhooks Le Commis."
+---
+
+<Update label="Juin 2026" description="Lancement de l'API publique v1">
+
+Première version publique de la plateforme d'intégration Le Commis. Un établissement peut désormais diffuser ses informations vers des sites externes (site vitrine, build statique, application) via trois canaux complémentaires.
+
+## API publique v1 (lecture seule)
+
+Quatre endpoints JSON, tous authentifiés par le header `X-Api-Key` et scopés sur le `slug` de l'établissement :
+
+<CardGroup cols={2}>
+  <Card title="Établissement" href="/api-reference/establishment/get-establishment">
+    `GET /api/v1/establishments/{slug}` — identité, contact, localisation, logo.
+  </Card>
+  <Card title="Horaires" href="/api-reference/establishment/get-hours">
+    `GET /api/v1/establishments/{slug}/hours` — horaires réguliers et exceptionnels.
+  </Card>
+  <Card title="Liste des menus" href="/api-reference/menus/list-menus">
+    `GET /api/v1/establishments/{slug}/menus` — menus web et fichiers du menu (champ `assets`) associés.
+  </Card>
+  <Card title="Détail d'un menu" href="/api-reference/menus/get-menu">
+    `GET /api/v1/establishments/{slug}/menus/{menu_type_slug}` — sections et items.
+  </Card>
+</CardGroup>
+
+- **Authentification** : header `X-Api-Key`, clé serveur-à-serveur propre à chaque établissement. L'API doit être activée (`public_api_enabled`) dans les réglages de l'établissement.
+- **Quota de requêtes** : 120 requêtes/heure par clé et 500 requêtes/heure par IP. Un dépassement renvoie `429 Rate limit exceeded`.
+- **Détection de changement** : chaque réponse expose un champ `content_revision` (entier monotone par établissement) pour invalider un cache ou déclencher un re-fetch.
+
+<Note>
+  Le champ `content_revision` est le moyen recommandé pour savoir si vous devez re-lire l'API : conservez la dernière valeur connue et ne rechargez que lorsqu'elle augmente.
+</Note>
+
+## Redirections de fichiers
+
+Des URLs plug-and-play en `302` à coller directement dans une balise `<img>`, `<iframe>` ou un lien :
+
+- `GET /r/master_menu?establishment={slug}` — PDF de la Carte unifiée combinée (toujours servi).
+- `GET /r/menus?establishment={slug}&menu_type={menu_type_slug}&locale={fr|en}` — fichier web du menu courant (nécessite `redirect_enabled`).
+
+## Webhooks sortants
+
+Un événement disponible : `establishment.content_updated`. Le webhook est un **signal** (pas un transport de contenu) — le payload indique quelles ressources ont changé et la nouvelle `content_revision`, à charge pour le récepteur de re-lire l'API.
+
+- Signature **HMAC-SHA256** via le header `X-LeCommis-Signature`, vérifiable à temps constant.
+- 5 tentatives avec backoff croissant ; debounce de 30 s qui fusionne les changements rapprochés.
+- HTTPS obligatoire côté récepteur.
+
+<Note>
+  Le webhook ne transporte jamais le contenu lui-même : à réception, vérifiez la signature puis re-lisez les endpoints concernés pour récupérer les données à jour.
+</Note>
+
+## i18n
+
+Contenu de menu disponible en **français** (défaut) et **anglais** via le query param `?locale=fr|en` sur les endpoints menus. Fallback automatique `en → fr` sur le contenu manquant.
+
+</Update>

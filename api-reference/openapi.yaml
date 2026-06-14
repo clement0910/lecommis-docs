@@ -1,0 +1,545 @@
+---
+openapi: 3.0.1
+info:
+  title: Le Commis API
+  version: v1
+  description: API publique permettant aux sites externes de lire les informations
+    à jour d'un établissement.
+servers:
+- url: https://app.lecommis.fr
+  description: Production
+paths:
+  "/api/v1/establishments/{slug}":
+    get:
+      summary: Renvoie l'identité d'un établissement
+      tags:
+      - Établissement
+      security:
+      - api_key: []
+      parameters:
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Slug de l'établissement
+      responses:
+        '200':
+          description: Établissement trouvé
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Establishment"
+        '401':
+          description: Clé API invalide
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ApiError"
+        '429':
+          description: Quota de requêtes dépassé
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ApiError"
+        '404':
+          description: Établissement introuvable
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ApiError"
+  "/api/v1/establishments/{establishment_slug}/hours":
+    get:
+      summary: Renvoie les horaires d'un établissement
+      tags:
+      - Horaires
+      security:
+      - api_key: []
+      parameters:
+      - name: establishment_slug
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Slug de l'établissement
+      responses:
+        '200':
+          description: Horaires de l'établissement
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Hours"
+        '401':
+          description: Clé API invalide
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ApiError"
+        '429':
+          description: Quota de requêtes dépassé
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ApiError"
+        '404':
+          description: Établissement introuvable
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ApiError"
+  "/api/v1/establishments/{establishment_slug}/menus":
+    get:
+      summary: Liste les menus actuellement publiés sur le web
+      tags:
+      - Menus
+      security:
+      - api_key: []
+      parameters:
+      - name: establishment_slug
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Slug de l'établissement
+      - name: locale
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - fr
+          - en
+        description: Langue du contenu et filtre des fichiers. Absent, renvoie tous
+          les fichiers.
+      responses:
+        '200':
+          description: Liste des menus courants
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/MenusIndex"
+        '401':
+          description: Clé API invalide
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ApiError"
+        '429':
+          description: Quota de requêtes dépassé
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ApiError"
+        '404':
+          description: Établissement introuvable
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ApiError"
+  "/api/v1/establishments/{establishment_slug}/menus/{menu_type_slug}":
+    get:
+      summary: Renvoie le menu courant d'un type de menu
+      tags:
+      - Menus
+      security:
+      - api_key: []
+      parameters:
+      - name: establishment_slug
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Slug de l'établissement
+      - name: menu_type_slug
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Slug du type de menu
+      - name: locale
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - fr
+          - en
+        description: Langue des sections et des items et filtre des fichiers. Absent,
+          renvoie le contenu fr et tous les fichiers.
+      responses:
+        '200':
+          description: Menu trouvé
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/MenuDetail"
+        '401':
+          description: Clé API invalide
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ApiError"
+        '429':
+          description: Quota de requêtes dépassé
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ApiError"
+        '404':
+          description: Type de menu introuvable
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ApiError"
+components:
+  securitySchemes:
+    api_key:
+      type: apiKey
+      name: X-Api-Key
+      in: header
+      description: Clé API de l'établissement. Elle doit rester côté serveur.
+  schemas:
+    ApiError:
+      type: object
+      additionalProperties: false
+      required:
+      - error
+      properties:
+        error:
+          type: string
+        details:
+          type: array
+          items:
+            type: string
+    Contact:
+      type: object
+      additionalProperties: false
+      required:
+      - email
+      - phone_number
+      properties:
+        email:
+          type: string
+          nullable: true
+          example: contact@aubistrot.fr
+        phone_number:
+          type: string
+          nullable: true
+          example: "+33640709045"
+    Location:
+      type: object
+      additionalProperties: false
+      required:
+      - address
+      - latitude
+      - longitude
+      properties:
+        address:
+          type: string
+          nullable: true
+          example: 12 rue de Rivoli, 75001 Paris
+        latitude:
+          type: number
+          nullable: true
+          example: 48.8566
+        longitude:
+          type: number
+          nullable: true
+          example: 2.3522
+    BusinessHoursPeriod:
+      type: object
+      additionalProperties: false
+      required:
+      - open_day
+      - open_time
+      - close_day
+      - close_time
+      properties:
+        open_day:
+          type: string
+          example: Lundi
+        open_time:
+          type: string
+          nullable: true
+          example: '12:00'
+        close_day:
+          type: string
+          nullable: true
+          example: Lundi
+        close_time:
+          type: string
+          nullable: true
+          example: '14:00'
+    SpecialHoursPeriod:
+      type: object
+      additionalProperties: false
+      required:
+      - start_date
+      - end_date
+      - open_time
+      - close_time
+      - closed
+      properties:
+        start_date:
+          type: string
+          format: date
+          example: '2026-12-24'
+        end_date:
+          type: string
+          format: date
+          nullable: true
+          example: '2026-12-26'
+        open_time:
+          type: string
+          nullable: true
+          example: '12:00'
+        close_time:
+          type: string
+          nullable: true
+          example: '14:00'
+        closed:
+          type: boolean
+          example: true
+    MenuType:
+      type: object
+      additionalProperties: false
+      required:
+      - slug
+      - name
+      - kind
+      properties:
+        slug:
+          type: string
+          example: menu-du-midi
+        name:
+          type: string
+          example: Menu du midi
+        kind:
+          type: string
+          enum:
+          - menu
+          - card
+          example: menu
+    MenuAsset:
+      type: object
+      additionalProperties: false
+      required:
+      - language_scope
+      - urls
+      properties:
+        language_scope:
+          type: string
+          enum:
+          - fr
+          - en
+          - fr_en
+          example: fr
+        urls:
+          type: array
+          items:
+            type: string
+            example: https://app.lecommis.fr/menus/au-bistrot/menu-du-midi/web_fr.png
+          description: URLs des fichiers du menu (un menu peut comporter plusieurs
+            pages).
+    MenuItem:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - name
+      - description
+      - price
+      - a_la_carte
+      - gluten_free
+      - vegetarian
+      - vegan
+      - chef_recommendation
+      properties:
+        id:
+          type: integer
+          example: 42
+        name:
+          type: string
+          example: Salade César
+        description:
+          type: string
+          nullable: true
+          example: Romaine, parmesan, croûtons, sauce César
+        price:
+          type: string
+          nullable: true
+          example: '12.50'
+          description: Montant décimal sérialisé en chaîne de caractères, null hors
+            des items à la carte.
+        a_la_carte:
+          type: boolean
+          example: true
+        gluten_free:
+          type: boolean
+          example: false
+        vegetarian:
+          type: boolean
+          example: true
+        vegan:
+          type: boolean
+          example: false
+        chef_recommendation:
+          type: boolean
+          example: false
+    MenuSection:
+      type: object
+      additionalProperties: false
+      required:
+      - name
+      - position
+      - items
+      properties:
+        name:
+          type: string
+          example: Entrées
+        position:
+          type: integer
+          example: 1
+        items:
+          type: array
+          items:
+            "$ref": "#/components/schemas/MenuItem"
+    Menu:
+      type: object
+      additionalProperties: false
+      required:
+      - menu_type
+      - reference_date
+      - assets
+      properties:
+        menu_type:
+          "$ref": "#/components/schemas/MenuType"
+        reference_date:
+          type: string
+          format: date
+          nullable: true
+          example: '2026-06-13'
+        assets:
+          type: array
+          items:
+            "$ref": "#/components/schemas/MenuAsset"
+    MenuDetail:
+      type: object
+      additionalProperties: false
+      required:
+      - content_revision
+      - menu_type
+      - reference_date
+      - assets
+      - sections
+      properties:
+        content_revision:
+          type: integer
+          format: int64
+          example: 67
+        menu_type:
+          "$ref": "#/components/schemas/MenuType"
+        reference_date:
+          type: string
+          format: date
+          nullable: true
+          example: '2026-06-13'
+        assets:
+          type: array
+          items:
+            "$ref": "#/components/schemas/MenuAsset"
+        sections:
+          type: array
+          items:
+            "$ref": "#/components/schemas/MenuSection"
+    MenusIndex:
+      type: object
+      additionalProperties: false
+      required:
+      - content_revision
+      - menus
+      properties:
+        content_revision:
+          type: integer
+          format: int64
+          example: 67
+          description: Révision monotone du contenu public de l'établissement.
+        master_menu_url:
+          type: string
+          nullable: true
+          example: https://app.lecommis.fr/files/au-bistrot/carte-unifiee.pdf
+          description: URL de la Carte unifiée (PDF combiné), null si absente.
+        menus:
+          type: array
+          items:
+            "$ref": "#/components/schemas/Menu"
+    Hours:
+      type: object
+      additionalProperties: false
+      required:
+      - content_revision
+      - business_hours
+      - special_hours_coming
+      properties:
+        content_revision:
+          type: integer
+          format: int64
+          example: 67
+          description: Révision monotone du contenu public de l'établissement.
+        business_hours_summary:
+          type: string
+          nullable: true
+          example: Ouvert du mardi au dimanche, 12h–14h et 19h–22h
+        business_hours:
+          type: array
+          items:
+            "$ref": "#/components/schemas/BusinessHoursPeriod"
+        special_hours_coming:
+          type: array
+          items:
+            "$ref": "#/components/schemas/SpecialHoursPeriod"
+    Establishment:
+      type: object
+      additionalProperties: false
+      required:
+      - language
+      - content_revision
+      description: Identité de l'établissement. Les horaires sont exposés via /hours,
+        le contenu des menus via /menus.
+      properties:
+        language:
+          type: string
+          enum:
+          - fr
+        content_revision:
+          type: integer
+          format: int64
+          example: 7
+          description: Révision monotone du contenu public de l'établissement.
+        name:
+          type: string
+          example: Au Bistrot
+        description:
+          type: string
+          nullable: true
+          example: Bistrot de quartier, cuisine de saison.
+        category:
+          type: string
+          nullable: true
+          example: Restaurant français
+        website_url:
+          type: string
+          nullable: true
+          example: https://aubistrot.fr
+        menu_url:
+          type: string
+          nullable: true
+          example: https://aubistrot.fr/carte
+        contact:
+          "$ref": "#/components/schemas/Contact"
+        location:
+          "$ref": "#/components/schemas/Location"
+        logo_url:
+          type: string
+          nullable: true
+          example: https://app.lecommis.fr/files/au-bistrot/logo.png

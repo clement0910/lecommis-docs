@@ -1,0 +1,95 @@
+---
+title: "Horaires"
+description: "Récupérer les horaires réguliers et les horaires exceptionnels à venir."
+---
+
+```text
+GET /api/v1/establishments/{slug}/hours
+```
+
+Retourne les horaires d'ouverture réguliers, un résumé textuel prêt à afficher, et les horaires exceptionnels à venir (fermetures, jours fériés…).
+
+## Exemple
+
+<CodeGroup>
+
+```bash curl
+curl https://app.lecommis.fr/api/v1/establishments/au-bistrot/hours \
+  -H "X-Api-Key: VOTRE_CLE_API"
+```
+
+```js JavaScript
+const res = await fetch(
+  "https://app.lecommis.fr/api/v1/establishments/au-bistrot/hours",
+  { headers: { "X-Api-Key": process.env.LECOMMIS_API_KEY } }
+);
+const hours = await res.json();
+```
+
+</CodeGroup>
+
+```json Réponse 200
+{
+  "content_revision": 67,
+  "business_hours_summary": "Ouvert du mardi au dimanche, 12h–14h et 19h–22h",
+  "business_hours": [
+    { "open_day": "Lundi", "open_time": "12:00", "close_day": "Lundi", "close_time": "14:00" }
+  ],
+  "special_hours_coming": [
+    { "start_date": "2026-12-24", "end_date": "2026-12-26", "open_time": "12:00", "close_time": "14:00", "closed": true }
+  ]
+}
+```
+
+## Champs de la réponse
+
+<ResponseField name="business_hours_summary" type="string | null">
+  Résumé textuel des horaires, déjà formaté en français et prêt à afficher tel quel (ex. « Ouvert du mardi au dimanche, 12h–14h et 19h–22h »). Utile pour un affichage rapide sans reconstruire les plages depuis `business_hours`.
+</ResponseField>
+
+<ResponseField name="business_hours" type="array">
+  Liste des plages d'ouverture régulières. Un même jour peut apparaître plusieurs fois (service du midi et du soir).
+  <Expandable title="business_hours[]">
+    <ResponseField name="open_day" type="string">
+      Nom du jour d'ouverture, en français (ex. `Lundi`).
+    </ResponseField>
+    <ResponseField name="open_time" type="string">
+      Heure d'ouverture, au format `HH:MM` (ex. `12:00`).
+    </ResponseField>
+    <ResponseField name="close_day" type="string | null">
+      Nom du jour de fermeture. Peut différer de `open_day` pour une plage à cheval sur deux jours.
+    </ResponseField>
+    <ResponseField name="close_time" type="string | null">
+      Heure de fermeture, au format `HH:MM`.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="special_hours_coming" type="array">
+  Horaires exceptionnels à venir (fermetures, horaires spéciaux pour un événement ou un jour férié).
+  <Expandable title="special_hours_coming[]">
+    <ResponseField name="start_date" type="string">
+      Date de début, au format `YYYY-MM-DD`.
+    </ResponseField>
+    <ResponseField name="end_date" type="string | null">
+      Date de fin, au format `YYYY-MM-DD`. Absente pour une exception sur une seule journée.
+    </ResponseField>
+    <ResponseField name="open_time" type="string | null">
+      Heure d'ouverture exceptionnelle, au format `HH:MM`.
+    </ResponseField>
+    <ResponseField name="close_time" type="string | null">
+      Heure de fermeture exceptionnelle, au format `HH:MM`.
+    </ResponseField>
+    <ResponseField name="closed" type="boolean">
+      `true` si l'établissement est fermé sur cette période (ignorez alors `open_time` / `close_time`).
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="content_revision" type="integer">
+  Numéro de révision du contenu de l'établissement (commun à toutes les ressources). Voir [content_revision](/integrations/api/content-revision).
+</ResponseField>
+
+<Tip>
+Pour un affichage minimal, `business_hours_summary` suffit. Construisez votre propre widget depuis `business_hours` si vous avez besoin d'un rendu par jour ou d'une logique « ouvert maintenant ».
+</Tip>

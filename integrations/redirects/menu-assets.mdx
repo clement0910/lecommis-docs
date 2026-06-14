@@ -1,0 +1,86 @@
+---
+title: "Fichiers de menu"
+description: "Une URL par menu et par langue qui renvoie vers l'image ou le PDF du menu courant. À coller dans un <img> ou un <a>."
+---
+
+Là où la [Carte unifiée](/integrations/redirects/master-menu) regroupe tout en un PDF, le fichier de menu cible **un menu précis** (via son `menu_type`) **dans une langue donnée**. C'est l'URL idéale pour afficher l'image d'une carte directement dans une page.
+
+## Endpoint
+
+```bash
+GET https://app.lecommis.fr/r/menus?establishment={slug}&menu_type={menu_type_slug}&locale={fr|en}
+```
+
+<ParamField query="establishment" type="string" required>
+  Le slug de l'établissement (jamais un identifiant numérique). Exemple : `au-bistrot`.
+</ParamField>
+
+<ParamField query="menu_type" type="string" required>
+  Le slug du type de menu. Exemple : `menu-du-midi`.
+</ParamField>
+
+<ParamField query="locale" type="string">
+  La langue du fichier : `fr` ou `en`.
+</ParamField>
+
+La réponse est un **302** vers le fichier web (image ou PDF) du **menu courant** pour ce `menu_type` et cette langue.
+
+<Warning>
+Cette redirection exige que `redirect_enabled` soit activé sur l'établissement. C'est une option **opt-in** (désactivée par défaut). Tant qu'elle n'est pas activée, l'endpoint répond **404** (`Menu non disponible`). **Seul l'administrateur de l'établissement** peut l'activer, dans les **réglages menus**, via une modale dédiée.
+</Warning>
+
+## Intégration
+
+Collez l'URL dans une balise `<img>` pour afficher la carte, ou dans un `<a>` pour proposer un lien.
+
+<CodeGroup>
+
+```html Français
+<img
+  src="https://app.lecommis.fr/r/menus?establishment=au-bistrot&menu_type=menu-du-midi&locale=fr"
+  alt="Menu du midi"
+/>
+
+<a
+  href="https://app.lecommis.fr/r/menus?establishment=au-bistrot&menu_type=menu-du-midi&locale=fr"
+  target="_blank"
+  rel="noopener"
+>
+  Voir le menu du midi
+</a>
+```
+
+```html English
+<img
+  src="https://app.lecommis.fr/r/menus?establishment=au-bistrot&menu_type=menu-du-midi&locale=en"
+  alt="Lunch menu"
+/>
+
+<a
+  href="https://app.lecommis.fr/r/menus?establishment=au-bistrot&menu_type=menu-du-midi&locale=en"
+  target="_blank"
+  rel="noopener"
+>
+  See the lunch menu
+</a>
+```
+
+</CodeGroup>
+
+<Tip>
+L'URL pointe toujours vers le menu courant : quand une nouvelle version est publiée dans Le Commis, le fichier servi est mis à jour automatiquement.
+</Tip>
+
+## Attention au fallback de langue
+
+<Warning>
+Il n'y a **aucun fallback de langue** sur les fichiers de menu. Si aucun fichier ne correspond exactement à la `locale` demandée, la réponse est un **404** (`Menu non disponible`) — on ne sert jamais silencieusement une autre langue. Un menu peut donc exister en `fr` et renvoyer un `404` en `en`.
+</Warning>
+
+Pour savoir quelles langues sont réellement disponibles pour un menu, interrogez l'[API menus](/integrations/api/menus) et lisez le champ `language_scope` de chaque fichier du menu (champ `assets`) : `fr`, `en` ou `fr_en` — un fichier `fr_en` couvre les deux langues. Cela évite de pointer une `<img>` vers une langue absente.
+
+Le comportement de fallback diffère entre le contenu (texte des menus) et les fichiers du menu : les détails sont décrits dans [Comportement du fallback](/i18n/fallback-behavior).
+
+## Quota de requêtes
+
+Comme toutes les redirections, l'endpoint est limité à **500 requêtes par heure et par IP** (`429` au-delà). Voir [Quota de requêtes](/essentials/rate-limiting).

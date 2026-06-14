@@ -1,0 +1,107 @@
+---
+title: "Sécurité & signature"
+description: "Vérifier la signature HMAC-SHA256 de chaque webhook et se protéger contre le rejeu."
+---
+
+Chaque webhook est signé. **Vérifiez systématiquement la signature avant de traiter une requête** : c'est ce qui garantit que la livraison vient bien de Le Commis et n'a pas été altérée. Une requête dont la signature est invalide doit être rejetée et ignorée.
+
+## En-têtes reçus
+
+Le Commis ajoute ces en-têtes à chaque `POST` :
+
+| En-tête | Description |
+| --- | --- |
+| `X-LeCommis-Signature` | Signature HMAC au format `sha256=<hex>`. |
+| `X-LeCommis-Timestamp` | Date d'émission, en secondes epoch. Sert à reconstruire la charge signée et à détecter le rejeu. |
+| `X-LeCommis-Delivery` | Identifiant unique de la livraison (ex. `whd_3f9a...`). Sert à l'idempotence. |
+| `User-Agent` | `LeCommis-Webhook/1.0`. |
+| `Content-Type` | `application/json`. |
+
+## Comment la signature est calculée
+
+La signature est un HMAC-SHA256, encodé en hexadécimal et préfixé `sha256=`. La charge signée combine le **timestamp** et le **corps brut** de la requête :
+
+```text
+signed_payload = "{X-LeCommis-Timestamp}.{corps brut JSON}"
+signature      = "sha256=" + HMAC_SHA256(signing_secret, signed_payload)  // en hexadécimal
+```
+
+<Warning>
+  Utilisez **le corps brut** (raw body) tel qu'il a été reçu, pas une version re-sérialisée après parsing JSON. Le moindre changement d'espaces ou d'ordre des clés casserait la comparaison. Lisez le corps brut **avant** que votre framework ne le parse.
+</Warning>
+
+## Vérification pas à pas
+
+<Steps>
+  <Step title="Récupérez le corps brut et les en-têtes">
+    Lisez le corps de la requête en chaîne brute, plus `X-LeCommis-Signature` et `X-LeCommis-Timestamp`.
+  </Step>
+  <Step title="Reconstituez la charge signée">
+    Concaténez `"{timestamp}.{corps brut}"`.
+  </Step>
+  <Step title="Calculez le HMAC attendu">
+    `HMAC_SHA256(signing_secret, charge_signée)` encodé en hexadécimal, préfixé `sha256=`.
+  </Step>
+  <Step title="Comparez à temps constant">
+    Comparez votre valeur à `X-LeCommis-Signature` avec une comparaison à temps constant (`crypto.timingSafeEqual`). N'utilisez jamais `==`.
+  </Step>
+  <Step title="Rejetez les requêtes trop anciennes">
+    Si `|now - timestamp| > 5 min`, rejetez la requête : c'est probablement un rejeu.
+  </Step>
+</Steps>
+
+## Exemple de vérification
+
+```javascript Node.js (Express)
+import express from "express";
+import crypto from "node:crypto";
+
+const SIGNING_SECRET = process.env.LECOMMIS_SIGNING_SECRET;
+const TOLERANCE = 5 * 60; // secondes
+
+const app = express();
+
+// Important : récupérer le corps BRUT, pas du JSON re-sérialisé.
+app.post(
+  "/webhooks/lecommis",
+  express.raw({ type: "application/json" }),
+  (req, res) => {
+    const rawBody = req.body; // Buffer
+    const signature = req.get("X-LeCommis-Signature") || "";
+    const timestamp = req.get("X-LeCommis-Timestamp") || "";
+
+    // Anti-rejeu.
+    if (Math.abs(Date.now() / 1000 - Number(timestamp)) > TOLERANCE) {
+      return res.status(401).send("stale timestamp");
+    }
+
+    const signedPayload = `${timestamp}.${rawBody.toString("utf8")}`;
+    const digest = crypto
+      .createHmac("sha256", SIGNING_SECRET)
+      .update(signedPayload)
+      .digest("hex");
+    const expected = `sha256=${digest}`;
+
+    const ok =
+      expected.length === signature.length &&
+      crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
+
+    if (!ok) return res.status(401).send("invalid signature");
+
+    // Signature valide -> répondre vite, traiter en async.
+    res.status(200).send("ok");
+  }
+);
+```
+
+<Warning>
+  Si la signature est invalide ou le timestamp trop ancien, **répondez `401` et ignorez la requête.** Ne faites aucun traitement, ne re-fetch rien : une requête non signée ou périmée ne doit jamais déclencher d'action.
+</Warning>
+
+## Le secret de signature
+
+Le `signing_secret` est propre à chaque endpoint webhook, configuré dans la page **« réglages API »** de l'établissement. Vous pouvez le **régénérer** (`regenerate_secret`) à tout moment depuis ces mêmes réglages API — pensez alors à mettre à jour la valeur côté votre serveur. Stockez-le comme un secret (variable d'environnement, coffre-fort), jamais en clair dans le code.
+
+<Note>
+  Régénérer le secret depuis les réglages API invalide immédiatement l'ancienne valeur : les livraisons signées avec l'ancien secret échoueront jusqu'à ce que votre serveur utilise le nouveau. Régénérez quand vous suspectez une fuite, puis déployez la nouvelle valeur sans délai.
+</Note>

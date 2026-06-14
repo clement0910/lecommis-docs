@@ -1,0 +1,98 @@
+---
+title: "Sites multilingues"
+description: "Bonnes pratiques de cache, de build et d'affichage pour un site fr/en alimenté par Le Commis."
+---
+
+Construire un site bilingue (français + anglais) au-dessus de Le Commis demande quelques précautions, principalement autour du cache et du repli. Voici les règles à suivre.
+
+## Une requête par locale
+
+Le contenu diffère par langue : faites **un appel par locale** pour chaque endpoint menus.
+
+<CodeGroup>
+
+```bash Français
+curl -s "https://app.lecommis.fr/api/v1/establishments/au-bistrot/menus/menu-du-midi?locale=fr" \
+  -H "X-Api-Key: $LECOMMIS_API_KEY"
+```
+
+```bash Anglais
+curl -s "https://app.lecommis.fr/api/v1/establishments/au-bistrot/menus/menu-du-midi?locale=en" \
+  -H "X-Api-Key: $LECOMMIS_API_KEY"
+```
+
+</CodeGroup>
+
+Les endpoints `establishment` et `hours` ne sont pas localisés : un seul appel suffit, partagé entre vos pages fr et en.
+
+## Afficher la langue réellement reçue
+
+À cause du repli `en → fr`, une réponse `en` peut contenir du texte français pour les champs non traduits. **Affichez le texte tel qu'il arrive** ; ne le rejetez pas et ne le masquez pas parce qu'il « n'a pas l'air anglais ». Côté markup, vous pouvez annoter au niveau du champ si la langue compte pour vous (`lang="fr"` sur un libellé retombé en français), mais ne vous fiez pas à un champ d'API pour deviner la langue d'un item.
+
+## Ne pas supposer la parité fr/en sur les fichiers du menu
+
+Les fichiers du menu ne se replient pas (voir [Comportement de repli](/i18n/fallback-behavior)). Avant d'afficher un visuel anglais :
+
+1. Lisez le `language_scope` de chaque fichier (`fr`, `en` ou `fr_en`).
+2. N'affichez l'URL `/r/menus?...&locale=en` que si un fichier couvre `en` ou `fr_en`.
+3. Prévoyez le **404** : masquez le visuel ou retombez côté intégrateur sur la version `fr`.
+
+```js Choisir le fichier à afficher
+function pickAsset(assets, locale) {
+  return assets.find(
+    (a) => a.language_scope === locale || a.language_scope === "fr_en"
+  );
+  // -> undefined si aucun asset ne couvre la locale : ne pas construire d'URL EN.
+}
+```
+
+## Cache, builds et webhooks
+
+C'est le point le plus important pour un site multilingue.
+
+<Warning>
+`content_revision` est **commun à toutes les locales** : un même établissement a la **même** valeur en `fr` et en `en`. Une seule notification de changement invalide donc **les deux langues à la fois**.
+</Warning>
+
+Conséquences concrètes :
+
+- **Mettez la locale dans votre clé de cache.** Le contenu diffère par langue, pas la révision. Une clé du type `establishment_slug + ":" + menu_type_slug + ":" + locale + ":" + content_revision` évite de servir du fr là où vous attendez de l'en.
+- **Une notif `establishment.content_updated` invalide fr ET en.** À la réception du webhook, purgez (ou re-fetchez) les deux locales, pas seulement celle qui a déclenché le changement — le payload ne distingue pas la langue.
+- **Comparez la révision pour éviter les re-fetch inutiles.** Stockez la dernière `content_revision` connue et ne reconstruisez que si la nouvelle valeur est supérieure.
+
+```text Exemple de clé de cache
+au-bistrot:menu-du-midi:en:67
+└── slug      └── menu     └── locale └── content_revision
+```
+
+<Note>
+La locale doit faire partie de la **clé de cache**, pas la `content_revision` qui est partagée entre `fr` et `en`. Sans la locale dans la clé, une entrée `fr` et une entrée `en` se télescopent et vous risquez de servir la mauvaise langue.
+</Note>
+
+### Schéma de build incrémental
+
+<Steps>
+  <Step title="Build initial">
+    Pour chaque locale (`fr`, `en`), récupérez les menus, mémorisez `content_revision`.
+  </Step>
+  <Step title="Réception webhook">
+    `establishment.content_updated` arrive avec une `content_revision` plus élevée et la liste `changed_resources`.
+  </Step>
+  <Step title="Invalidation">
+    Purgez le cache des **deux** locales pour les ressources concernées, puis re-fetchez.
+  </Step>
+  <Step title="Rebuild">
+    Régénérez les pages fr et en avec les nouvelles données, et mémorisez la nouvelle révision.
+  </Step>
+</Steps>
+
+## Pour aller plus loin
+
+<CardGroup cols={2}>
+  <Card title="content_revision" icon="rotate" href="/integrations/api/content-revision">
+    Le compteur monotone commun à toutes les locales pour invalider votre cache.
+  </Card>
+  <Card title="Webhooks" icon="bell" href="/integrations/webhooks/overview">
+    Recevoir `establishment.content_updated` et savoir quoi re-lire.
+  </Card>
+</CardGroup>

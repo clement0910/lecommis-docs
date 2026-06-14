@@ -1,0 +1,112 @@
+---
+title: "Gestion des erreurs"
+description: "Format d'erreur unifié et codes HTTP renvoyés par l'API publique."
+---
+
+L'API publique Le Commis renvoie un format d'erreur **plat** et un petit ensemble de codes HTTP. Les endpoints de lecture (`GET`) ne renvoient ni `400` ni `422`.
+
+## Format d'erreur
+
+Toutes les erreurs partagent la même structure JSON à plat :
+
+```json
+{
+  "error": "Unauthorized"
+}
+```
+
+Certaines erreurs peuvent inclure un tableau `details` pour préciser le problème :
+
+```json
+{
+  "error": "Validation failed",
+  "details": ["champ X manquant", "champ Y invalide"]
+}
+```
+
+<ResponseField name="error" type="string" required>
+  Message d'erreur lisible décrivant la nature du problème.
+</ResponseField>
+
+<ResponseField name="details" type="string[]">
+  Optionnel. Tableau de précisions, une chaîne par point de détail. Absent quand il n'y a rien à détailler.
+</ResponseField>
+
+## Codes HTTP
+
+| Code | `error` | Cause |
+| --- | --- | --- |
+| `401` | `Unauthorized` | Clé d'API absente ou invalide dans `X-Api-Key`. |
+| `404` | `Not found` | Slug inconnu, **ou** API publique désactivée, **ou** menu inexistant. |
+| `429` | `Rate limit exceeded` | Quota de requêtes dépassé. |
+
+<Note>
+  Les endpoints de lecture **n'émettent pas** de `400 Bad Request` ni de `422 Unprocessable Entity`. Un paramètre invalide (par exemple une `locale` inconnue) est silencieusement corrigé plutôt que rejeté.
+</Note>
+
+### `401 Unauthorized`
+
+La clé d'API est absente de l'en-tête `X-Api-Key`, ou ne correspond à aucun établissement.
+
+```json
+{
+  "error": "Unauthorized"
+}
+```
+
+Voir [Authentification](/essentials/authentication) pour transmettre correctement la clé.
+
+### `404 Not found`
+
+Trois causes possibles, **indistinguables** par conception :
+
+- le `slug` d'établissement n'existe pas ;
+- l'établissement existe mais son **API publique est désactivée** (`public_api_enabled` à `false`) ;
+- le `menu_type_slug` demandé n'a pas de menu courant.
+
+```json
+{
+  "error": "Not found"
+}
+```
+
+<Info>
+  Le `404` est volontairement renvoyé à la place d'un `403` quand l'API est désactivée, afin de **ne pas divulguer l'existence** de l'établissement. Détails dans [Authentification](/essentials/authentication).
+</Info>
+
+### `429 Rate limit exceeded`
+
+<Note>
+  Le `429` peut provenir du quota par clé d'API **ou** du quota par adresse IP. Le corps de réponse ne précise pas lequel des deux a été atteint : appliquez la même stratégie de backoff dans les deux cas.
+</Note>
+
+Vous avez dépassé un quota de requêtes (par clé ou par IP).
+
+```json
+{
+  "error": "Rate limit exceeded"
+}
+```
+
+Appliquez un backoff avant de réessayer — voir [Quotas de requêtes](/essentials/rate-limiting).
+
+## Réagir aux erreurs
+
+```js JavaScript
+const response = await callLecommisApi();
+
+switch (response.status) {
+  case 200:
+    return await response.json();
+  case 401:
+    throw new Error("Clé d'API invalide ou absente");
+  case 404:
+    // slug inconnu, API désactivée, ou menu inexistant
+    return null;
+  case 429:
+    // attendre puis réessayer avec backoff
+    return scheduleRetryWithBackoff();
+  default:
+    throw new Error(`Erreur inattendue : ${response.status}`);
+}
+```

@@ -1,0 +1,83 @@
+---
+title: "Catalogue d'événements"
+description: "Les événements de webhook émis par Le Commis et la structure exacte de leur payload."
+---
+
+Cette page liste les événements de webhook que Le Commis peut émettre. Aujourd'hui, un seul événement métier existe : `establishment.content_updated`.
+
+## `establishment.content_updated`
+
+Émis lorsque le contenu d'un établissement change (profil, horaires, menus, Carte unifiée). C'est un **signal** : le payload n'embarque pas le contenu, seulement de quoi savoir *quoi* re-lire.
+
+```json Payload
+{
+  "delivery_id": "whd_3f9a...",
+  "type": "establishment.content_updated",
+  "created_at": "2026-06-14T10:00:00Z",
+  "data": {
+    "establishment_slug": "au-bistrot",
+    "content_revision": 67,
+    "changed_resources": ["menus", "business_hours"]
+  }
+}
+```
+
+### Champs
+
+<ResponseField name="delivery_id" type="string">
+  Identifiant unique de la livraison. Identique à l'en-tête `X-LeCommis-Delivery`. Utilisez-le pour [dédupliquer](/integrations/webhooks/retries) les livraisons rejouées.
+</ResponseField>
+
+<ResponseField name="type" type="string">
+  Le type d'événement, ici `establishment.content_updated`.
+</ResponseField>
+
+<ResponseField name="created_at" type="string (ISO 8601)">
+  Date de création de l'événement, en UTC.
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  Données de l'événement.
+
+  <Expandable title="data">
+    <ResponseField name="establishment_slug" type="string">
+      Le slug de l'établissement concerné. Sert à cibler les bons appels API (`/establishments/{slug}/...`).
+    </ResponseField>
+
+    <ResponseField name="content_revision" type="integer">
+      La nouvelle [révision de contenu](/integrations/api/content-revision) de l'établissement, après le changement. Entier monotone, par établissement, **indépendant de la locale**.
+    </ResponseField>
+
+    <ResponseField name="changed_resources" type="string[]">
+      La liste des types de ressources qui ont changé depuis la dernière livraison. Sous-ensemble de `profile`, `business_hours`, `special_hours`, `menus`, `master_menu` (la Carte unifiée). Plusieurs valeurs peuvent apparaître si des changements rapprochés ont été fusionnés (voir le [debounce](/integrations/webhooks/retries)).
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<Note>
+  Traitez toujours `changed_resources` comme un **ensemble** pouvant contenir plusieurs valeurs, et concevez votre handler pour ignorer une valeur inconnue plutôt que d'échouer : de nouvelles ressources pourront s'y ajouter à l'avenir.
+</Note>
+
+## Quel endpoint re-lire pour chaque ressource
+
+Mappez chaque valeur de `changed_resources` vers l'endpoint API à rafraîchir :
+
+| `changed_resources` | Ce qui a changé | Endpoint à re-lire |
+| --- | --- | --- |
+| `profile` | Identité de l'établissement (nom, description, contact, localisation, logo…) | [`GET /establishments/{slug}`](/integrations/api/establishment) |
+| `business_hours` | Horaires d'ouverture réguliers | [`GET /establishments/{slug}/hours`](/integrations/api/hours) |
+| `special_hours` | Horaires exceptionnels à venir | [`GET /establishments/{slug}/hours`](/integrations/api/hours) |
+| `menus` | Un ou plusieurs menus web (liste et/ou détail) | [`GET /establishments/{slug}/menus`](/integrations/api/menus) |
+| `master_menu` | La Carte unifiée (PDF combiné de toutes les cartes) | [`GET /establishments/{slug}/menus`](/integrations/api/menus) — champ `master_menu_url` |
+
+<Tip>
+  En pratique, beaucoup d'intégrations ignorent le détail de `changed_resources` et se contentent de comparer `content_revision` à la dernière valeur connue, puis re-fetchent ce dont elles ont besoin. C'est plus simple et tout aussi correct. Voir [Révision de contenu](/integrations/api/content-revision).
+</Tip>
+
+## Événement de test
+
+Le bouton **« test delivery »** des réglages API envoie un événement `establishment.webhook_test` à votre URL. Il suit le même format d'en-têtes et de signature que les événements réels, ce qui vous permet de valider votre vérification de signature de bout en bout sans attendre un vrai changement de contenu.
+
+<Note>
+  D'autres familles d'événements arriveront (notifications de domaine au-delà du simple contenu publiable). Consultez la [roadmap](/roadmap) pour suivre les ajouts. Concevez votre handler pour ignorer poliment un `type` inconnu plutôt que d'échouer.
+</Note>

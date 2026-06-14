@@ -1,0 +1,101 @@
+---
+title: "Quotas de requêtes"
+description: "Quotas de l'API et des redirections, et bonnes pratiques pour les respecter."
+---
+
+Le Commis applique des quotas de requêtes pour garantir la stabilité du service. Ils s'appliquent par **clé d'API** et par **adresse IP**.
+
+## Quotas
+
+<table>
+  <thead>
+    <tr>
+      <th>Surface</th>
+      <th>Limite</th>
+      <th>Portée</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>API (`/api/v1/...`)</td>
+      <td>120 requêtes / heure</td>
+      <td>par clé d'API (SHA256 de `X-Api-Key`)</td>
+    </tr>
+    <tr>
+      <td>API (`/api/v1/...`)</td>
+      <td>500 requêtes / heure</td>
+      <td>par adresse IP (anti-flood)</td>
+    </tr>
+    <tr>
+      <td>Redirections (`/r/...`)</td>
+      <td>500 requêtes / heure</td>
+      <td>par adresse IP</td>
+    </tr>
+  </tbody>
+</table>
+
+Les deux quotas de l'API se cumulent : une requête doit passer **et** le quota par clé, **et** le quota par IP.
+
+## Dépassement : `429`
+
+Lorsqu'un quota de requêtes est dépassé, l'API renvoie un `429 Too Many Requests` :
+
+```json 429 Rate limit exceeded
+{
+  "error": "Rate limit exceeded"
+}
+```
+
+<Note>
+  Aucun en-tête de quota (`X-RateLimit-Limit`, `X-RateLimit-Remaining`, `Retry-After`...) n'est aujourd'hui renvoyé par l'API. Ne vous appuyez pas dessus : basez votre logique sur la réception d'un `429`. L'exposition de ces en-têtes figure dans la roadmap, mais aucune garantie n'est donnée à ce jour.
+</Note>
+
+## Bonnes pratiques
+
+### Mettre en cache avec `content_revision`
+
+La meilleure façon de rester sous les quotas est de **ne pas refaire d'appel inutile**. Chaque ressource expose un entier `content_revision`, commun à tout l'établissement. Stockez la dernière valeur connue et ne re-téléchargez le contenu que lorsqu'elle augmente.
+
+<Card title="content_revision" icon="rotate" href="/integrations/api/content-revision">
+  Comment utiliser `content_revision` pour mettre en cache et invalider proprement.
+</Card>
+
+### Préférer les webhooks au polling
+
+Interroger l'API en boucle (« polling ») pour détecter un changement épuise vos quotas. Abonnez-vous plutôt aux **webhooks** : Le Commis vous notifie d'un changement (`establishment.content_updated`), et vous ne re-lisez l'API qu'à ce moment-là.
+
+<Card title="Webhooks" icon="bolt" href="/integrations/webhooks/overview">
+  Recevez un signal de changement au lieu d'interroger l'API en continu.
+</Card>
+
+### Appliquer un backoff sur `429`
+
+Si vous recevez un `429`, **attendez avant de réessayer**, avec un délai croissant (backoff exponentiel) et un peu de hasard (jitter) pour éviter les rafales synchronisées.
+
+```js Backoff exponentiel (JavaScript)
+const maxRetries = 5;
+
+async function callWithBackoff() {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const response = await callLecommisApi();
+
+    if (response.status !== 429) {
+      return response;
+    }
+
+    if (attempt === maxRetries) {
+      throw new Error("rate limited");
+    }
+
+    // 1s, 2s, 4s, 8s... + jitter
+    const delay = 2 ** attempt * 1000 + Math.random() * 1000;
+    await new Promise((resolve) => setTimeout(resolve, delay));
+  }
+}
+```
+
+### Éviter le polling agressif
+
+- Ne déclenchez pas un appel par chargement de page côté visiteur : passez par votre propre cache.
+- Espacez vos tâches planifiées ; un rafraîchissement à la minute n'a de sens que si le contenu change à la minute (ce qui n'est presque jamais le cas pour des menus).
+- Regroupez vos lectures : sur un changement notifié, re-lisez seulement les ressources listées dans `changed_resources` du webhook.

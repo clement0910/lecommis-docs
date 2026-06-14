@@ -1,0 +1,248 @@
+---
+title: "Menus"
+description: "Lister les menus web d'un établissement et récupérer le détail (sections et items) d'un menu."
+---
+
+L'API menus expose deux endpoints : la **liste** des menus web et le **détail** d'un menu (avec ses sections et items). Les deux acceptent `?locale=fr|en`. La liste expose également l'URL de la **Carte unifiée** (champ `master_menu_url`), le PDF qui combine toutes les cartes de l'établissement.
+
+| Méthode | Chemin | Description |
+| --- | --- | --- |
+| `GET` | `/establishments/{slug}/menus` | Liste des menus web |
+| `GET` | `/establishments/{slug}/menus/{menu_type_slug}` | Détail d'un menu |
+
+<Note>
+Le `menu_type_slug` est **stable par établissement** (ex. `menu-du-midi`). Vous pouvez le coder en dur dans votre intégration. Si le menu n'existe pas (ou n'a pas de version courante), l'API renvoie `404 {"error":"Not found"}`.
+</Note>
+
+## Langue
+
+Ajoutez `?locale=fr` ou `?locale=en` pour choisir la langue du contenu. Valeur absente sur le détail → `fr`. Valeur invalide → coercée silencieusement en `fr`. Seuls les **noms/descriptions d'items et noms de sections** sont traduits ; avec un repli `en → fr` si une traduction manque. Voir [Sélection de la langue](/i18n/selecting-language).
+
+<Tabs>
+  <Tab title="Liste des menus">
+
+```text
+GET /api/v1/establishments/{slug}/menus
+```
+
+### Exemple
+
+<CodeGroup>
+
+```bash curl
+curl "https://app.lecommis.fr/api/v1/establishments/au-bistrot/menus?locale=fr" \
+  -H "X-Api-Key: VOTRE_CLE_API"
+```
+
+```js JavaScript
+const url = new URL("https://app.lecommis.fr/api/v1/establishments/au-bistrot/menus");
+url.searchParams.set("locale", "fr");
+
+const res = await fetch(url, {
+  headers: { "X-Api-Key": process.env.LECOMMIS_API_KEY },
+});
+const menus = await res.json();
+```
+
+</CodeGroup>
+
+```json Réponse 200
+{
+  "content_revision": 67,
+  "master_menu_url": "https://app.lecommis.fr/files/au-bistrot/carte-unifiee.pdf",
+  "menus": [
+    {
+      "menu_type": { "slug": "menu-du-midi", "name": "Menu du midi", "kind": "menu" },
+      "reference_date": "2026-06-13",
+      "assets": [
+        { "language_scope": "fr", "urls": ["https://app.lecommis.fr/menus/au-bistrot/menu-du-midi/web_fr.png"] }
+      ]
+    }
+  ]
+}
+```
+
+### Champs de la réponse
+
+<ResponseField name="master_menu_url" type="string | null">
+  URL du PDF de la **Carte unifiée** de l'établissement (toutes les cartes combinées en un seul document), si disponible.
+</ResponseField>
+
+<ResponseField name="menus" type="array">
+  Liste des menus web courants.
+  <Expandable title="menus[]">
+    <ResponseField name="menu_type" type="object">
+      <Expandable title="menu_type">
+        <ResponseField name="slug" type="string">
+          Identifiant stable du type de menu (à utiliser pour l'endpoint détail).
+        </ResponseField>
+        <ResponseField name="name" type="string">
+          Nom affichable du menu.
+        </ResponseField>
+        <ResponseField name="kind" type="string">
+          `menu` (offre composée) ou `card` (carte).
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    <ResponseField name="reference_date" type="string | null">
+      Date de référence du menu, au format `YYYY-MM-DD`.
+    </ResponseField>
+    <ResponseField name="assets" type="array">
+      Fichiers du menu (image(s) ou PDF), exposés via le champ `assets`. Voir ci-dessous.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="content_revision" type="integer">
+  Numéro de révision du contenu (commun à toutes les ressources). Voir [content_revision](/integrations/api/content-revision).
+</ResponseField>
+
+  </Tab>
+  <Tab title="Détail d'un menu">
+
+```text
+GET /api/v1/establishments/{slug}/menus/{menu_type_slug}
+```
+
+Le détail reprend les champs d'un menu de la liste et ajoute `sections`, avec les items.
+
+### Exemple
+
+<CodeGroup>
+
+```bash curl
+curl "https://app.lecommis.fr/api/v1/establishments/au-bistrot/menus/menu-du-midi?locale=fr" \
+  -H "X-Api-Key: VOTRE_CLE_API"
+```
+
+```js JavaScript
+const url = new URL("https://app.lecommis.fr/api/v1/establishments/au-bistrot/menus/menu-du-midi");
+url.searchParams.set("locale", "fr");
+
+const res = await fetch(url, {
+  headers: { "X-Api-Key": process.env.LECOMMIS_API_KEY },
+});
+const menu = await res.json();
+```
+
+</CodeGroup>
+
+```json Réponse 200
+{
+  "content_revision": 67,
+  "menu_type": { "slug": "menu-du-midi", "name": "Menu du midi", "kind": "menu" },
+  "reference_date": "2026-06-13",
+  "assets": [
+    { "language_scope": "fr", "urls": ["https://app.lecommis.fr/menus/au-bistrot/menu-du-midi/web_fr.png"] }
+  ],
+  "sections": [
+    {
+      "name": "Entrées",
+      "position": 1,
+      "items": [
+        {
+          "id": 42,
+          "name": "Salade César",
+          "description": "Romaine, parmesan, croûtons, sauce César",
+          "price": "12.50",
+          "a_la_carte": true,
+          "gluten_free": false,
+          "vegetarian": true,
+          "vegan": false,
+          "chef_recommendation": false
+        }
+      ]
+    }
+  ]
+}
+```
+
+```json Réponse 404 (menu inexistant)
+{ "error": "Not found" }
+```
+
+### Champs de la réponse
+
+<ResponseField name="menu_type" type="object">
+  Identique à la liste : `slug`, `name`, `kind` (`menu` | `card`).
+</ResponseField>
+
+<ResponseField name="reference_date" type="string | null">
+  Date de référence du menu, au format `YYYY-MM-DD`.
+</ResponseField>
+
+<ResponseField name="assets" type="array">
+  Fichiers du menu (image ou PDF), champ `assets` (voir la section **Fichiers du menu** ci-dessous).
+</ResponseField>
+
+<ResponseField name="sections" type="array">
+  Sections du menu, ordonnées par `position`.
+  <Expandable title="sections[]">
+    <ResponseField name="name" type="string">
+      Nom de la section (ex. `Entrées`). Traduit selon `?locale`.
+    </ResponseField>
+    <ResponseField name="position" type="integer">
+      Ordre d'affichage de la section.
+    </ResponseField>
+    <ResponseField name="items" type="array">
+      <Expandable title="items[]">
+        <ResponseField name="id" type="integer">
+          Identifiant de l'item.
+        </ResponseField>
+        <ResponseField name="name" type="string">
+          Nom de l'item. Traduit selon `?locale`.
+        </ResponseField>
+        <ResponseField name="description" type="string | null">
+          Description de l'item. Traduite selon `?locale`.
+        </ResponseField>
+        <ResponseField name="price" type="string | null">
+          Prix sérialisé en **chaîne décimale** (ex. `"12.50"`). `null` hors items à la carte.
+        </ResponseField>
+        <ResponseField name="a_la_carte" type="boolean">
+          `true` si l'item est proposé à la carte (avec un prix propre).
+        </ResponseField>
+        <ResponseField name="gluten_free" type="boolean">
+          Sans gluten.
+        </ResponseField>
+        <ResponseField name="vegetarian" type="boolean">
+          Végétarien.
+        </ResponseField>
+        <ResponseField name="vegan" type="boolean">
+          Végan.
+        </ResponseField>
+        <ResponseField name="chef_recommendation" type="boolean">
+          Recommandation du chef.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="content_revision" type="integer">
+  Numéro de révision du contenu (commun à toutes les ressources). Voir [content_revision](/integrations/api/content-revision).
+</ResponseField>
+
+  </Tab>
+</Tabs>
+
+## Fichiers du menu (champ `assets`)
+
+Chaque menu porte un tableau `assets`. Une entrée du champ `assets` décrit un ou plusieurs fichiers du menu (un menu peut s'étaler sur plusieurs pages).
+
+<ResponseField name="assets[].language_scope" type="string">
+  Langues couvertes par le fichier : `fr`, `en`, ou `fr_en` (un fichier `fr_en` couvre les deux langues).
+</ResponseField>
+
+<ResponseField name="assets[].urls" type="array">
+  Tableau d'URLs des fichiers (image ou PDF). Plusieurs entrées = plusieurs pages.
+</ResponseField>
+
+Sans `?locale`, **tous** les `language_scope` sont renvoyés. Avec `?locale`, seuls les fichiers correspondant à la langue demandée (y compris `fr_en`) sont retournés.
+
+<Warning>
+Il n'y a **aucun repli de langue sur les fichiers du menu**. Un fichier peut exister en `fr` et être absent en `en`. Contrôlez toujours `language_scope` avant d'afficher un fichier, et prévoyez le cas où aucun fichier ne correspond à la langue demandée. Voir [Comportement de repli](/i18n/fallback-behavior).
+</Warning>
+
+<Note>
+Pour servir un fichier du menu directement via une URL plug-and-play (`<img>`, `<iframe>`…) sans appeler l'API, voyez les [redirections de fichiers du menu](/integrations/redirects/menu-assets).
+</Note>

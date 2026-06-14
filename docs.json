@@ -1,0 +1,116 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Le Commis API",
+  "description": "Documentation développeur de l'API publique, des redirections d'assets et des webhooks Le Commis.",
+  "colors": {
+    "primary": "#6f7c45",
+    "light": "#9aa86b",
+    "dark": "#4f5a31"
+  },
+  "favicon": "/favicon.svg",
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Guide",
+        "groups": [
+          {
+            "group": "Démarrer",
+            "pages": [
+              "essentials/introduction",
+              "essentials/quickstart",
+              "essentials/choisir-son-integration"
+            ]
+          },
+          {
+            "group": "API publique",
+            "pages": [
+              "integrations/api/overview",
+              "integrations/api/establishment",
+              "integrations/api/hours",
+              "integrations/api/menus",
+              "integrations/api/content-revision"
+            ]
+          },
+          {
+            "group": "Redirections & fichiers de menu",
+            "pages": [
+              "integrations/redirects/overview",
+              "integrations/redirects/master-menu",
+              "integrations/redirects/menu-assets"
+            ]
+          },
+          {
+            "group": "Webhooks",
+            "pages": [
+              "integrations/webhooks/overview",
+              "integrations/webhooks/security",
+              "integrations/webhooks/events",
+              "integrations/webhooks/retries",
+              "integrations/webhooks/implementation"
+            ]
+          },
+          {
+            "group": "Langues & i18n",
+            "pages": [
+              "i18n/overview",
+              "i18n/selecting-language",
+              "i18n/fallback-behavior",
+              "i18n/multilingual-sites"
+            ]
+          },
+          {
+            "group": "Référence",
+            "pages": [
+              "essentials/authentication",
+              "essentials/rate-limiting",
+              "essentials/errors",
+              "essentials/best-practices"
+            ]
+          },
+          {
+            "group": "Exemples d'intégration",
+            "pages": [
+              "examples/wordpress",
+              "examples/astro",
+              "examples/nextjs-isr"
+            ]
+          },
+          {
+            "group": "Évolutions",
+            "pages": [
+              "changelog",
+              "roadmap"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "openapi": "/api-reference/openapi.yaml"
+      }
+    ]
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Tableau de bord",
+        "href": "https://app.lecommis.fr"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Le Commis",
+      "href": "https://lecommis.fr"
+    }
+  },
+  "footer": {
+    "socials": {
+      "website": "https://lecommis.fr"
+    }
+  }
+}

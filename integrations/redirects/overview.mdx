@@ -1,0 +1,49 @@
+---
+title: "Redirections & fichiers de menu"
+description: "Des URLs plug-and-play qui renvoient directement vers le PDF ou l'image de votre menu. Zéro code, à coller dans une page."
+---
+
+Les redirections sont la méthode la plus simple pour afficher un menu sur un site externe : une URL stable qui répond par un **302** vers le fichier réel (image ou PDF) hébergé par Le Commis. Aucun appel d'API, aucune clé à manipuler côté code — il suffit de coller l'URL dans une balise HTML.
+
+## Comment ça marche
+
+Vous construisez une URL au format `https://app.lecommis.fr/r/...` avec le slug de l'établissement (et selon le cas le menu et la langue). Le navigateur, ou n'importe quel client HTTP, suit le **302** jusqu'au fichier final (image ou PDF hébergé par Le Commis).
+
+```html
+<!-- Le navigateur suit le 302 et affiche le fichier -->
+<img src="https://app.lecommis.fr/r/menus?establishment=au-bistrot&menu_type=menu-du-midi&locale=fr" alt="Menu du midi" />
+```
+
+Comme l'URL pointe toujours vers le **menu courant**, le fichier servi se met à jour automatiquement quand vous publiez une nouvelle version dans Le Commis : l'intégration n'a rien à changer.
+
+<Info>
+Les redirections sont conçues pour être collées dans une page : `<img>`, `<iframe>`, `<a href>`, ou un bouton. Le client suit le `302` de manière transparente.
+</Info>
+
+## Les deux URLs
+
+| Redirection | URL | Activation | Réponse |
+| --- | --- | --- | --- |
+| **Carte unifiée** | `/r/master_menu?establishment={slug}` | Toujours servie | `302` vers le PDF combiné |
+| **Fichier de menu** | `/r/menus?establishment={slug}&menu_type={menu_type_slug}&locale={fr\|en}` | `redirect_enabled` requis (opt-in) | `302` vers l'image ou le PDF du menu courant |
+
+En cas de fichier absent (ou de redirection non activée), la réponse est un **404** avec le texte brut `Menu non disponible`.
+
+<Note>
+**Seul l'administrateur de l'établissement** peut activer ou désactiver les redirections de fichiers de menu, dans les **réglages menus**, via une modale dédiée. La Carte unifiée, elle, est toujours servie sans activation.
+</Note>
+
+## Quota de requêtes
+
+Les redirections sont limitées à **500 requêtes par heure et par IP**. Au-delà, la réponse est un `429`. Pour de l'embarquement public à fort trafic, laissez le navigateur (ou un CDN) mettre les fichiers en cache plutôt que de re-suivre le `302` à chaque affichage. Voir [Quota de requêtes](/essentials/rate-limiting).
+
+## Pour aller plus loin
+
+<CardGroup cols={2}>
+  <Card title="Carte unifiée" icon="file-pdf" href="/integrations/redirects/master-menu">
+    Le PDF combiné de toutes vos cartes, toujours disponible.
+  </Card>
+  <Card title="Fichiers de menu" icon="image" href="/integrations/redirects/menu-assets">
+    L'image ou le PDF d'un menu précis, par langue.
+  </Card>
+</CardGroup>

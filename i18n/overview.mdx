@@ -1,0 +1,59 @@
+---
+title: "Langues & i18n — vue d'ensemble"
+description: "Comment Le Commis gère le français et l'anglais : ce qui est traduit, ce qui ne l'est pas."
+---
+
+Le Commis expose deux langues : **`fr`** (le français, langue par défaut) et **`en`** (l'anglais). Il n'y a pas d'autre locale.
+
+La traduction ne couvre **que le contenu des menus**. L'identité de l'établissement (nom, description, catégorie) n'est jamais localisée : elle est servie telle qu'elle a été saisie.
+
+## Ce qui est traduit
+
+Seul le **contenu de menu** est multilingue, géré côté backend en JSONB :
+
+- les **noms et descriptions d'items** ;
+- les **noms de sections** d'un menu.
+
+Ces champs respectent le paramètre `?locale` sur les endpoints menus. Voir [Choisir la langue](/i18n/selecting-language).
+
+## Ce qui n'est PAS traduit
+
+L'identité de l'établissement n'est pas localisée :
+
+- `name`, `description`, `category` ;
+- les coordonnées, l'adresse, les horaires.
+
+<Note>
+Le champ `establishment.language` vaut **toujours `"fr"`**, en dur, quel que soit le contexte. Ne vous appuyez pas dessus pour deviner la langue d'une réponse — utilisez la locale que vous avez vous-même demandée.
+</Note>
+
+## Locale par défaut et valeurs invalides
+
+| Situation | Comportement |
+| --- | --- |
+| `?locale` absent | Le contenu est servi en **`fr`** |
+| `?locale=en` | Le contenu est servi en **`en`** (avec repli FR si une traduction manque) |
+| `?locale=` invalide (ex. `de`, `es`) | Coercé **silencieusement en `fr`**, aucune erreur |
+
+Seuls les endpoints `/menus` et `/menus/{menu_type_slug}` consomment la locale (ainsi que la redirection `/r/menus`). Les endpoints `establishment` et `hours` ne sont pas localisés.
+
+<Note>
+Le repli ne fonctionne que dans le sens **`en → fr`** sur le contenu textuel : un champ sans traduction anglaise retombe sur sa valeur française. Il n'y a aucun repli `fr → en`, ni aucun repli sur les fichiers du menu (champ `assets`). Voir [Comportement de repli](/i18n/fallback-behavior).
+</Note>
+
+## Pour aller plus loin
+
+<CardGroup cols={2}>
+  <Card title="Choisir la langue" icon="globe" href="/i18n/selecting-language">
+    Le paramètre `?locale=fr|en` sur les endpoints menus, avec des exemples curl.
+  </Card>
+  <Card title="Comportement de repli" icon="arrows-left-right" href="/i18n/fallback-behavior">
+    Le repli `en → fr` sur le contenu, et l'absence de repli sur les fichiers du menu.
+  </Card>
+  <Card title="Sites multilingues" icon="layer-group" href="/i18n/multilingual-sites">
+    Bonnes pratiques de cache, de build et d'affichage pour un site fr/en.
+  </Card>
+  <Card title="content_revision" icon="rotate" href="/integrations/api/content-revision">
+    Une révision commune à toutes les locales pour invalider votre cache.
+  </Card>
+</CardGroup>

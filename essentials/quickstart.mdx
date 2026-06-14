@@ -1,0 +1,88 @@
+---
+title: "Démarrage rapide"
+description: "Activez l'API publique et réussissez votre premier appel authentifié en quelques minutes."
+---
+
+L'objectif de cette page : passer un premier appel réussi à l'API Le Commis. Comptez quelques minutes. Vous aurez besoin d'un accès aux réglages de l'établissement et d'un terminal (ou de votre langage favori).
+
+<Steps>
+  <Step title="Activer l'API et récupérer la clé">
+    Dans les **réglages de l'établissement**, activez l'API publique, puis récupérez la clé `X-Api-Key` propre à cet établissement.
+
+    Cette clé est un **secret par établissement** : c'est elle qui authentifie chaque appel. Vous pouvez la régénérer à tout moment depuis les mêmes réglages (la rotation invalide l'ancienne clé).
+
+    <Warning>
+      La clé `X-Api-Key` est une clé **serveur-à-serveur**. Ne l'exposez **jamais** dans du JavaScript navigateur ni dans un dépôt public : elle donnerait à n'importe qui un accès en lecture aux données de l'établissement. Stockez-la dans une variable d'environnement côté backend.
+    </Warning>
+  </Step>
+
+  <Step title="Premier appel">
+    Récupérez l'identité de l'établissement (ici le slug d'exemple `au-bistrot`). Le slug identifie le tenant — on n'utilise jamais d'identifiant numérique.
+
+    <Note>
+      Remplacez `au-bistrot` par le slug de votre établissement, visible dans ses réglages. La clé `X-Api-Key` est propre à cet établissement : une clé ne fonctionne que pour le slug auquel elle est associée.
+    </Note>
+
+    <CodeGroup>
+    ```bash cURL
+    curl https://app.lecommis.fr/api/v1/establishments/au-bistrot \
+      -H "X-Api-Key: $LECOMMIS_API_KEY"
+    ```
+
+    ```js JavaScript (fetch)
+    const response = await fetch(
+      "https://app.lecommis.fr/api/v1/establishments/au-bistrot",
+      {
+        headers: { "X-Api-Key": process.env.LECOMMIS_API_KEY },
+      }
+    );
+
+    const data = await response.json();
+    console.log(data.name);
+    ```
+    </CodeGroup>
+
+    <Info>
+      Si vous obtenez `401 {"error":"Unauthorized"}`, la clé est absente ou invalide. Si vous obtenez `404 {"error":"Not found"}`, soit le slug est inconnu, soit l'API publique n'est pas activée pour cet établissement.
+    </Info>
+  </Step>
+
+  <Step title="Lire la réponse">
+    La ressource sérialisée est directement la racine du JSON — pas d'enveloppe `data` ni `meta`.
+
+    ```json
+    {
+      "language": "fr",
+      "content_revision": 67,
+      "name": "Au Bistrot",
+      "description": "Bistrot de quartier, cuisine de saison.",
+      "category": "Restaurant français",
+      "website_url": "https://aubistrot.fr",
+      "menu_url": "https://aubistrot.fr/carte",
+      "contact": { "email": "contact@aubistrot.fr", "phone_number": "+33640709045" },
+      "location": { "address": "12 rue de Rivoli, 75001 Paris", "latitude": 48.8566, "longitude": 2.3522 },
+      "logo_url": "https://app.lecommis.fr/files/au-bistrot/logo.png"
+    }
+    ```
+
+    Notez le champ `content_revision` : c'est un entier qui s'incrémente à chaque changement de contenu de l'établissement. Stockez-le pour détecter les mises à jour et invalider votre cache.
+
+    <Note>
+      Plusieurs champs sont nullables (`description`, `category`, `website_url`, `menu_url`, `contact.email`, `contact.phone_number`, `location.address`, `location.latitude`, `location.longitude`, `logo_url`). Prévoyez ces cas dans votre rendu.
+    </Note>
+  </Step>
+
+  <Step title="Aller plus loin">
+    <CardGroup cols={3}>
+      <Card title="Menus" icon="utensils" href="/integrations/api/menus">
+        Listez les menus web, lisez le détail d'un menu (sections, items, prix, allergènes).
+      </Card>
+      <Card title="Webhooks" icon="bell" href="/integrations/webhooks/overview">
+        Recevez un signal en temps réel à chaque changement et déclenchez un re-fetch.
+      </Card>
+      <Card title="Langues" icon="language" href="/i18n/overview">
+        Gérez le français et l'anglais via `?locale` et comprenez les règles de fallback.
+      </Card>
+    </CardGroup>
+  </Step>
+</Steps>

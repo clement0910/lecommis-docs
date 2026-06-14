@@ -1,0 +1,107 @@
+---
+title: "Établissement"
+description: "Récupérer l'identité d'un établissement : nom, contact, localisation, logo."
+---
+
+```text
+GET /api/v1/establishments/{slug}
+```
+
+Retourne l'identité publique de l'établissement : nom, description, catégorie, liens, contact, localisation et logo.
+
+## Exemple
+
+<CodeGroup>
+
+```bash curl
+curl https://app.lecommis.fr/api/v1/establishments/au-bistrot \
+  -H "X-Api-Key: VOTRE_CLE_API"
+```
+
+```js JavaScript
+const res = await fetch(
+  "https://app.lecommis.fr/api/v1/establishments/au-bistrot",
+  { headers: { "X-Api-Key": process.env.LECOMMIS_API_KEY } }
+);
+const establishment = await res.json();
+```
+
+</CodeGroup>
+
+```json Réponse 200
+{
+  "language": "fr",
+  "content_revision": 67,
+  "name": "Au Bistrot",
+  "description": "Bistrot de quartier, cuisine de saison.",
+  "category": "Restaurant français",
+  "website_url": "https://aubistrot.fr",
+  "menu_url": "https://aubistrot.fr/carte",
+  "contact": { "email": "contact@aubistrot.fr", "phone_number": "+33640709045" },
+  "location": { "address": "12 rue de Rivoli, 75001 Paris", "latitude": 48.8566, "longitude": 2.3522 },
+  "logo_url": "https://app.lecommis.fr/files/au-bistrot/logo.png"
+}
+```
+
+## Champs de la réponse
+
+<ResponseField name="name" type="string">
+  Nom de l'établissement.
+</ResponseField>
+
+<ResponseField name="description" type="string | null">
+  Description courte de l'établissement.
+</ResponseField>
+
+<ResponseField name="category" type="string | null">
+  Catégorie (ex. `Restaurant français`).
+</ResponseField>
+
+<ResponseField name="website_url" type="string | null">
+  URL du site web de l'établissement.
+</ResponseField>
+
+<ResponseField name="menu_url" type="string | null">
+  URL de la page « carte » / menu publique de l'établissement.
+</ResponseField>
+
+<ResponseField name="contact" type="object">
+  <Expandable title="contact">
+    <ResponseField name="email" type="string | null">
+      Adresse e-mail de contact.
+    </ResponseField>
+    <ResponseField name="phone_number" type="string | null">
+      Numéro de téléphone, au format international (ex. `+33640709045`).
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="location" type="object">
+  <Expandable title="location">
+    <ResponseField name="address" type="string | null">
+      Adresse postale formatée.
+    </ResponseField>
+    <ResponseField name="latitude" type="number | null">
+      Latitude (décimale).
+    </ResponseField>
+    <ResponseField name="longitude" type="number | null">
+      Longitude (décimale).
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="logo_url" type="string | null">
+  URL du logo de l'établissement.
+</ResponseField>
+
+<ResponseField name="language" type="string">
+  Toujours `"fr"`. Ce champ est figé : il décrit la langue de l'identité de l'établissement (nom, description, catégorie), qui **n'est pas traduite**. Seul le contenu des menus est multilingue. Voir [Comportement de repli](/i18n/fallback-behavior).
+</ResponseField>
+
+<ResponseField name="content_revision" type="integer">
+  Numéro de révision du contenu de l'établissement. Monotone, identique pour toutes les locales. Utilisez-le pour [invalider votre cache](/integrations/api/content-revision).
+</ResponseField>
+
+<Note>
+Les champs marqués `null` peuvent être absents de valeur tant qu'ils ne sont pas renseignés côté établissement. Prévoyez ce cas dans votre affichage.
+</Note>

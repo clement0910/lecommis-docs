@@ -1,0 +1,77 @@
+---
+title: "Webhooks — vue d'ensemble"
+description: "Le Commis prévient votre serveur quand le contenu d'un établissement change, pour que vous re-lisiez l'API et invalidiez votre cache."
+---
+
+Les webhooks Le Commis vous notifient en temps quasi réel lorsque le contenu d'un établissement évolue : profil, horaires, menus, Carte unifiée. Plutôt que d'interroger l'API en boucle, vous recevez un signal et vous réagissez seulement quand c'est nécessaire.
+
+## Un signal, pas un transport de données
+
+Le point le plus important à intégrer : **un webhook Le Commis est un signal, pas une livraison de contenu.** Le payload ne contient jamais le menu, les horaires ou le profil mis à jour. Il vous dit uniquement *quel(s) type(s) de ressource a changé* et *quelle est la nouvelle révision de contenu*.
+
+C'est à vous, en réaction, de :
+
+- re-lire l'[API publique](/integrations/api/overview) pour récupérer le contenu frais,
+- purger votre cache,
+- ou relancer le build de votre site statique.
+
+<Info>
+  Ce modèle garde les payloads minuscules, évite de versionner le schéma du contenu dans le webhook, et vous laisse maître de *quand* et *comment* vous rafraîchissez vos données.
+</Info>
+
+## Le flux de bout en bout
+
+<Steps>
+  <Step title="Un contenu change">
+    Quelqu'un modifie le profil, les horaires ou un menu de l'établissement dans Le Commis. La [révision de contenu](/integrations/api/content-revision) de l'établissement est incrémentée.
+  </Step>
+  <Step title="Le Commis POST un webhook signé">
+    Une requête `POST` est envoyée à votre URL de réception, avec un corps JSON et un en-tête de signature HMAC (`X-LeCommis-Signature`).
+  </Step>
+  <Step title="Votre endpoint répond vite (2xx)">
+    Vous vérifiez la signature, puis vous répondez immédiatement un code `2xx`. Tout traitement long doit partir en tâche de fond.
+  </Step>
+  <Step title="Vous re-fetch l'API">
+    Selon `changed_resources`, vous appelez les endpoints concernés pour récupérer le contenu à jour.
+  </Step>
+  <Step title="Vous invalidez / rebuild">
+    Vous purgez votre cache, ou vous déclenchez un rebuild de votre site (Astro, Next.js ISR, etc.).
+  </Step>
+</Steps>
+
+## Activer les webhooks
+
+La configuration du webhook (URL de réception + secret de signature) se fait dans la page **« réglages API »** de l'établissement — la même page que celle où vous récupérez la clé API.
+
+<Note>
+  **Seul l'administrateur** de l'établissement peut activer et configurer le webhook. Une fois configuré, vous pouvez **suivre l'état des livraisons (livrée / échouée)** depuis cette même page « réglages API », sans accéder au code de réception.
+</Note>
+
+1. Renseignez une **URL HTTPS publique** de réception (le `http://` est refusé).
+2. Notez le **secret de signature** (`signing_secret`) généré pour cet endpoint — vous en avez besoin pour vérifier les requêtes. Il peut être régénéré.
+3. Vérifiez que l'**API publique de l'établissement est activée** : un endpoint webhook n'est `operational` que si le webhook *et* l'API publique sont actifs.
+
+<Tip>
+  Un bouton **« test delivery »** envoie une livraison de test (`establishment.webhook_test`) à votre URL. Servez-vous-en pour valider votre vérification de signature avant la mise en production.
+</Tip>
+
+<Warning>
+  L'URL de réception doit être **HTTPS et publiquement joignable**. Le Commis n'appelle pas les adresses internes/privées (filtrage SSRF), ne suit pas les redirections, et applique des timeouts courts (connexion 3 s, lecture 5 s, écriture 5 s).
+</Warning>
+
+## Aller plus loin
+
+<CardGroup cols={2}>
+  <Card title="Sécurité & signature" icon="shield-check" href="/integrations/webhooks/security">
+    Vérifier la signature HMAC et se protéger du rejeu.
+  </Card>
+  <Card title="Catalogue d'événements" icon="list" href="/integrations/webhooks/events">
+    Le payload de `establishment.content_updated` champ par champ.
+  </Card>
+  <Card title="Retries & idempotence" icon="rotate" href="/integrations/webhooks/retries">
+    Tentatives, debounce 30 s, déduplication par `delivery_id`.
+  </Card>
+  <Card title="Implémentation" icon="code" href="/integrations/webhooks/implementation">
+    Un endpoint receveur complet, de la signature au rebuild.
+  </Card>
+</CardGroup>

@@ -1,0 +1,91 @@
+---
+title: "Bonnes pratiques"
+description: "Checklist pour intégrer l'API, les redirections et les webhooks Le Commis proprement."
+---
+
+Cette page rassemble les recommandations à suivre pour une intégration robuste, performante et sûre de Le Commis. Parcourez-la comme une checklist avant de passer en production.
+
+<Note>
+  Deux réflexes couvrent l'essentiel : indexer vos lectures sur `content_revision` (vous évitez les téléchargements inutiles, image, PDF ou Carte unifiée) et préférer les webhooks au polling (vous préservez vos quotas de requêtes). Le reste de cette page détaille les points plus fins.
+</Note>
+
+## Checklist rapide
+
+<Check>Clé d'API utilisée uniquement côté serveur, jamais exposée au client.</Check>
+<Check>Réponses mises en cache et indexées sur `content_revision`.</Check>
+<Check>Clé de cache déclinée **par locale** (`fr` / `en`).</Check>
+<Check>Champs `nullable` gérés explicitement dans le code.</Check>
+<Check>Prix lus comme des **chaînes** de caractères, pas des nombres.</Check>
+<Check>Webhooks rendus idempotents via `X-LeCommis-Delivery`.</Check>
+<Check>Signature HMAC des webhooks vérifiée à temps constant.</Check>
+<Check>Réponse `2xx` rapide au webhook, traitement en asynchrone.</Check>
+<Check>Webhooks préférés au polling de l'API.</Check>
+<Check>Backoff appliqué sur les réponses `429`.</Check>
+
+## Détails
+
+<AccordionGroup>
+  <Accordion title="Garder la clé d'API côté serveur" icon="key">
+    La clé d'API est un secret serveur-à-serveur. Appelez toujours Le Commis depuis votre backend et stockez la clé dans une variable d'environnement ou un gestionnaire de secrets. Ne l'embarquez jamais dans du JavaScript de navigateur, une application distribuée ou un dépôt public.
+
+    <Card title="Authentification" icon="lock" href="/essentials/authentication">
+      Détails sur la clé `X-Api-Key` et sa rotation.
+    </Card>
+  </Accordion>
+
+  <Accordion title="Mettre en cache et indexer sur content_revision" icon="rotate">
+    Chaque ressource expose un entier monotone `content_revision`, identique pour tout l'établissement. Stockez la dernière valeur connue ; ne re-téléchargez le contenu que lorsqu'elle augmente. C'est le mécanisme recommandé d'invalidation de cache.
+
+    <Card title="content_revision" icon="rotate" href="/integrations/api/content-revision">
+      Le compteur de révision pour détecter les changements.
+    </Card>
+  </Accordion>
+
+  <Accordion title="Décliner la clé de cache par locale" icon="language">
+    `content_revision` est **commun à toutes les langues** : la même valeur couvre `fr` et `en`. En revanche, le contenu des menus diffère selon la locale. Intégrez donc la locale dans votre clé de cache, par exemple `au-bistrot:menus:fr:rev67` et `au-bistrot:menus:en:rev67`. Une seule notification de changement invalide les deux langues.
+
+    <Card title="Comportement de fallback i18n" icon="language" href="/i18n/fallback-behavior">
+      Traductions, fallback `en` vers `fr` et portée des fichiers du menu (champ `assets`).
+    </Card>
+  </Accordion>
+
+  <Accordion title="Gérer les champs nullable" icon="circle-question">
+    De nombreux champs peuvent être `null` : `description`, `category`, `website_url`, `menu_url`, l'email et le téléphone de contact, les coordonnées de localisation, `logo_url`, `master_menu_url` (l'URL de la Carte unifiée), `reference_date`, le `price` d'un item, etc. Prévoyez systématiquement une valeur de repli ou un affichage conditionnel plutôt que d'afficher `null` ou de planter.
+  </Accordion>
+
+  <Accordion title="Traiter les prix comme des chaînes" icon="tag">
+    Le `price` d'un item est sérialisé en **chaîne décimale** (`"12.50"`) et vaut `null` hors des items à la carte. Ne le convertissez pas naïvement en flottant si vous devez préserver l'exactitude monétaire ; conservez-le tel quel pour l'affichage et utilisez un type décimal pour les calculs.
+  </Accordion>
+
+  <Accordion title="Rendre les webhooks idempotents" icon="fingerprint">
+    Un même événement peut être livré plusieurs fois (retries après timeout réseau). Utilisez l'en-tête `X-LeCommis-Delivery` (identifiant unique de livraison) comme clé d'idempotence : enregistrez les identifiants déjà traités et ignorez les doublons.
+
+    <Card title="Webhooks" icon="bolt" href="/integrations/webhooks/overview">
+      Cycle de vie des livraisons et retries.
+    </Card>
+  </Accordion>
+
+  <Accordion title="Vérifier la signature HMAC" icon="shield-check">
+    Chaque webhook est signé. Reconstituez `signed_payload = "{X-LeCommis-Timestamp}.{corps brut}"`, calculez `HMAC_SHA256(signing_secret, signed_payload)` en hexadécimal préfixé `sha256=`, et comparez à `X-LeCommis-Signature` **à temps constant**. Rejetez aussi les requêtes dont le timestamp s'écarte de plus de quelques minutes pour vous protéger du rejeu.
+
+    <Card title="Sécurité des webhooks" icon="shield-halved" href="/integrations/webhooks/security">
+      Vérification de signature et tolérance d'horloge.
+    </Card>
+  </Accordion>
+
+  <Accordion title="Répondre vite, traiter en asynchrone" icon="bolt">
+    Le succès d'une livraison est défini par une réponse `2xx`. Répondez immédiatement (accusé de réception) puis effectuez le travail lourd (re-fetch de l'API, purge de cache, rebuild) en tâche de fond. Une réponse lente peut provoquer un timeout côté Le Commis et déclencher un retry inutile.
+  </Accordion>
+
+  <Accordion title="Préférer les webhooks au polling" icon="bell">
+    N'interrogez pas l'API en boucle pour détecter un changement : vous épuiseriez vos quotas. Laissez le webhook `establishment.content_updated` vous signaler quand re-lire l'API, et limitez-vous aux ressources listées dans `changed_resources`.
+  </Accordion>
+
+  <Accordion title="Appliquer un backoff sur 429" icon="gauge-high">
+    En cas de `429 Rate limit exceeded`, attendez avant de réessayer, avec un délai croissant (backoff exponentiel) et un peu de jitter. N'enchaînez pas les tentatives immédiates.
+
+    <Card title="Quotas de requêtes" icon="gauge-high" href="/essentials/rate-limiting">
+      Quotas et stratégie de backoff.
+    </Card>
+  </Accordion>
+</AccordionGroup>

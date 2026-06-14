@@ -1,0 +1,89 @@
+---
+title: "Comportement de repli"
+description: "Repli en → fr sur le contenu, aucun repli sur les fichiers du menu : ce qu'il faut savoir."
+---
+
+Le repli (fallback) ne se comporte **pas de la même façon** pour le contenu textuel et pour les fichiers du menu (image ou PDF). Cette distinction est la source d'erreur la plus fréquente en intégration multilingue.
+
+## Contenu textuel : repli `en → fr`
+
+Quand vous demandez `?locale=en`, chaque champ de contenu qui n'a **pas** de traduction anglaise retombe automatiquement sur sa **valeur française**. Vous ne recevez donc jamais `null` ni une chaîne vide à cause d'une traduction manquante.
+
+- Le repli est configuré dans **un seul sens** : `en → fr`.
+- Il **n'existe pas** de repli `fr → en` : une requête `?locale=fr` ne va jamais chercher un texte anglais.
+
+```json Réponse en=true avec un item non traduit (extrait)
+{
+  "sections": [
+    {
+      "name": "Starters",          // section traduite
+      "items": [
+        {
+          "name": "Caesar salad",  // item traduit
+          "description": "Romaine, parmesan, croutons"
+        },
+        {
+          "name": "Tartare de bœuf", // pas de traduction EN -> texte FR servi
+          "description": "Bœuf, câpres, échalotes" // idem
+        }
+      ]
+    }
+  ]
+}
+```
+
+<Tip>
+Conséquence : une réponse `en` peut mélanger de l'anglais et du français au sein du même menu. C'est attendu — affichez le texte tel qu'il arrive plutôt que de filtrer par langue.
+</Tip>
+
+## Fichiers du menu (champ `assets`) : aucun repli
+
+Les fichiers du menu (image ou PDF) **ne se replient pas**. Si la locale demandée n'a pas de fichier correspondant, le fichier est tout simplement **absent**.
+
+- Sur la redirection `/r/menus?...&locale=en` : si aucun fichier ne couvre l'anglais → **404** (texte brut `Menu non disponible`).
+- Dans l'API JSON : seuls les fichiers (champ `assets`) correspondant à la locale sont listés.
+
+On ne sert **jamais** un fichier d'une autre langue à la place — pas de substitution silencieuse fr↔en sur les fichiers.
+
+### Lire `language_scope`
+
+Chaque fichier porte un champ **`language_scope`** ∈ `{ fr, en, fr_en }` qui décrit les langues qu'il couvre :
+
+| `language_scope` | Couvre `fr` | Couvre `en` |
+| --- | --- | --- |
+| `fr` | ✅ | ❌ |
+| `en` | ❌ | ✅ |
+| `fr_en` | ✅ | ✅ |
+
+Un fichier `fr_en` est bilingue : il sert à la fois la requête `fr` et la requête `en`.
+
+<Note>
+Le repli `en → fr` ne s'applique **qu'au contenu textuel** (noms et descriptions). Les fichiers du menu (champ `assets`), eux, sont strictement servis dans la langue demandée : pensez à vérifier `language_scope` avant de construire une URL `/r/menus?...&locale=en`.
+</Note>
+
+```json Menu avec un fichier FR uniquement (extrait)
+{
+  "menu_type": { "slug": "menu-du-midi", "name": "Menu du midi", "kind": "menu" },
+  "assets": [
+    {
+      "language_scope": "fr",
+      "urls": ["https://app.lecommis.fr/menus/au-bistrot/menu-du-midi/web_fr.png"]
+    }
+  ]
+}
+```
+
+Dans cet exemple, `/r/menus?...&locale=fr` renvoie le fichier, mais `/r/menus?...&locale=en` renvoie **404**.
+
+## Tableau récapitulatif
+
+| Type de donnée | Comportement si la traduction `en` est absente |
+| --- | --- |
+| Nom / description d'item | Texte **FR** servi à la place (jamais `null`) |
+| Nom de section | Texte **FR** servi à la place (jamais `null`) |
+| Fichier du menu (image / PDF) | **Aucun repli** — absent de la liste / `404` sur `/r/menus` |
+| Identité établissement (`name`, `category`…) | Non localisé — toujours la valeur FR saisie |
+
+<Warning>
+Ne supposez jamais qu'un menu disponible en `fr` l'est aussi en `en` côté fichiers. Vérifiez le `language_scope` de chaque fichier avant de construire une URL `/r/menus?...&locale=en`, et prévoyez le cas 404 (par exemple en masquant le visuel anglais ou en retombant côté intégrateur sur la version `fr`).
+</Warning>

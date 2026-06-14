@@ -1,0 +1,125 @@
+---
+title: "Implémentation"
+description: "Un endpoint receveur complet : vérifier la signature, répondre vite, re-fetch l'API et invalider le cache."
+---
+
+Cette page rassemble tout : un endpoint de réception de webhook prêt à l'emploi, de la vérification de signature jusqu'au rebuild. Le modèle est toujours le même.
+
+## Le modèle en 5 temps
+
+<Steps>
+  <Step title="Vérifier la signature">
+    Recalculez le HMAC sur le corps brut et comparez-le à `X-LeCommis-Signature` à temps constant. Rejetez (`401`) sinon. Voir [Sécurité](/integrations/webhooks/security).
+  </Step>
+  <Step title="Répondre 2xx immédiatement">
+    Acquittez la livraison avant tout traitement long, pour rester sous les timeouts (lecture 5 s).
+  </Step>
+  <Step title="Dédupliquer puis enfiler un job async">
+    Ignorez les `delivery_id` déjà vus, sinon poussez le traitement dans une file de tâches de fond. Voir [Retries & idempotence](/integrations/webhooks/retries).
+  </Step>
+  <Step title="Re-fetch l'API">
+    Selon `changed_resources` (ou simplement si `content_revision` a augmenté), appelez les [endpoints publics](/integrations/api/overview) concernés.
+  </Step>
+  <Step title="Invalider le cache / rebuild">
+    Purgez votre cache ou déclenchez un rebuild de votre site statique.
+  </Step>
+</Steps>
+
+## Endpoint complet
+
+```javascript Node.js (Express)
+import express from "express";
+import crypto from "node:crypto";
+
+const SIGNING_SECRET = process.env.LECOMMIS_SIGNING_SECRET;
+const TOLERANCE = 5 * 60;
+const app = express();
+
+app.post(
+  "/webhooks/lecommis",
+  express.raw({ type: "application/json" }),
+  async (req, res) => {
+    const rawBody = req.body; // Buffer brut
+    const signature = req.get("X-LeCommis-Signature") || "";
+    const timestamp = req.get("X-LeCommis-Timestamp") || "";
+    const delivery = req.get("X-LeCommis-Delivery") || "";
+
+    // 1. Anti-rejeu + signature.
+    if (Math.abs(Date.now() / 1000 - Number(timestamp)) > TOLERANCE) {
+      return res.status(401).send("stale");
+    }
+    const digest = crypto
+      .createHmac("sha256", SIGNING_SECRET)
+      .update(`${timestamp}.${rawBody.toString("utf8")}`)
+      .digest("hex");
+    const expected = `sha256=${digest}`;
+    const ok =
+      expected.length === signature.length &&
+      crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
+    if (!ok) return res.status(401).send("invalid signature");
+
+    const payload = JSON.parse(rawBody.toString("utf8"));
+
+    // 2 + 3. Répondre vite, traiter en async (après dédup).
+    if (!(await alreadyProcessed(delivery))) {
+      await queue.add("process-lecommis-webhook", payload);
+    }
+    res.status(200).send("ok");
+  }
+);
+
+// 4 + 5 — exécuté par le worker.
+async function handle(payload) {
+  const { establishment_slug: slug, changed_resources } = payload.data;
+
+  for (const resource of changed_resources) {
+    if (resource === "profile") await refetch(`/establishments/${slug}`);
+    else if (resource === "business_hours" || resource === "special_hours")
+      await refetch(`/establishments/${slug}/hours`);
+    else if (resource === "menus" || resource === "master_menu")
+      await refetch(`/establishments/${slug}/menus`);
+  }
+
+  await purgeCache(slug); // invalider votre cache
+  await triggerRebuild(slug); // ou déclencher un build
+}
+```
+
+<Note>
+  Dans la boucle ci-dessus, la valeur `master_menu` correspond à la **Carte unifiée** (le PDF combiné de toutes les cartes). Elle se récupère sur le même endpoint `/menus`, via le champ `master_menu_url` de la réponse.
+</Note>
+
+<Tip>
+  Vous pouvez ignorer `changed_resources` et vous baser uniquement sur `content_revision` : si la valeur reçue est supérieure à votre dernière valeur connue, re-fetch ce dont vous avez besoin. Voir [Révision de contenu](/integrations/api/content-revision).
+</Tip>
+
+## Re-fetch et authentification
+
+Les appels de re-fetch ciblent l'[API publique](/integrations/api/overview) et nécessitent l'en-tête `X-Api-Key`. La clé API et le secret de webhook sont deux secrets distincts : gardez-les tous deux côté serveur, jamais exposés au navigateur.
+
+## Checklist de mise en production
+
+<Check>Le corps brut (raw body) est lu **avant** tout parsing JSON.</Check>
+<Check>La signature est vérifiée à temps constant, et le timestamp rejeté au-delà de 5 min.</Check>
+<Check>Une signature invalide renvoie `401` et n'entraîne aucun traitement.</Check>
+<Check>L'endpoint répond `2xx` **avant** de re-fetch ou rebuild ; le travail part en async.</Check>
+<Check>Les livraisons sont dédupliquées sur `X-LeCommis-Delivery`.</Check>
+<Check>L'URL de réception est en **HTTPS public** et répond sous quelques secondes.</Check>
+<Check>Un `type` d'événement inconnu est ignoré proprement (pas d'erreur).</Check>
+
+## Pour aller plus loin
+
+<CardGroup cols={2}>
+  <Card title="Sécurité & signature" icon="shield-check" href="/integrations/webhooks/security">
+    Le détail de la vérification HMAC.
+  </Card>
+  <Card title="Révision de contenu" icon="hashtag" href="/integrations/api/content-revision">
+    Détecter les changements et invalider le cache.
+  </Card>
+  <Card title="Exemple Astro" icon="rocket" href="/examples/astro">
+    Déclencher un rebuild de site statique sur webhook.
+  </Card>
+  <Card title="Exemple Next.js ISR" icon="bolt" href="/examples/nextjs-isr">
+    Revalider les pages à la réception d'un webhook.
+  </Card>
+</CardGroup>

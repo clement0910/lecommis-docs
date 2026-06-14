@@ -1,0 +1,207 @@
+---
+title: "Intégration Astro (site statique)"
+description: "Récupérer les menus au build avec Astro et déclencher un rebuild via webhook."
+---
+
+Astro génère un site statique au moment du build : c'est l'approche idéale pour un site vitrine de restaurant. Vous récupérez les données Le Commis **pendant le build**, puis vous redéclenchez ce build quand un webhook signale un changement de contenu.
+
+<Note>
+  La clé d'API ne sert qu'au build, côté serveur. Elle ne se retrouve jamais dans le bundle client. Stockez-la dans une variable d'environnement **non préfixée par `PUBLIC_`** pour qu'Astro ne l'expose pas au navigateur.
+</Note>
+
+## Variables d'environnement
+
+```bash .env
+LECOMMIS_API_KEY=votre_cle_serveur_a_serveur
+LECOMMIS_SLUG=au-bistrot
+LECOMMIS_WEBHOOK_SECRET=votre_signing_secret
+```
+
+## Récupérer les données au build
+
+On crée un petit client typé, puis on l'utilise dans `getStaticPaths` pour générer une page par menu. L'API n'a pas d'enveloppe `data` : la ressource sérialisée **est** la racine JSON.
+
+<CodeGroup>
+
+```ts src/lib/lecommis.ts
+const API_BASE = "https://app.lecommis.fr/api/v1";
+
+const API_KEY = import.meta.env.LECOMMIS_API_KEY;
+const SLUG = import.meta.env.LECOMMIS_SLUG;
+
+async function apiGet<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: {
+      "X-Api-Key": API_KEY,
+      Accept: "application/json",
+    },
+  });
+
+  if (!res.ok) {
+    // 404 = slug inconnu / API désactivée / menu inexistant
+    // 401 = clé absente ou invalide ; 429 = quota de requêtes dépassé
+    throw new Error(`Le Commis API ${res.status} sur ${path}`);
+  }
+
+  return (await res.json()) as T;
+}
+
+export interface MenuItem {
+  id: number;
+  name: string;
+  description: string | null;
+  price: string | null; // décimal sérialisé en string, null hors à la carte
+  a_la_carte: boolean;
+  gluten_free: boolean;
+  vegetarian: boolean;
+  vegan: boolean;
+  chef_recommendation: boolean;
+}
+
+export interface MenuSection {
+  name: string;
+  position: number;
+  items: MenuItem[];
+}
+
+export interface MenuDetail {
+  content_revision: number;
+  menu_type: { slug: string; name: string; kind: "menu" | "card" };
+  reference_date: string | null;
+  sections: MenuSection[];
+}
+
+export interface MenusIndex {
+  content_revision: number;
+  master_menu_url: string | null; // URL de la Carte unifiée (PDF de toutes les cartes)
+  menus: { menu_type: { slug: string; name: string; kind: string } }[];
+}
+
+export function getMenusIndex(locale: "fr" | "en" = "fr") {
+  return apiGet<MenusIndex>(
+    `/establishments/${SLUG}/menus?locale=${locale}`
+  );
+}
+
+export function getMenu(menuTypeSlug: string, locale: "fr" | "en" = "fr") {
+  return apiGet<MenuDetail>(
+    `/establishments/${SLUG}/menus/${menuTypeSlug}?locale=${locale}`
+  );
+}
+```
+
+```astro src/pages/menus/[slug].astro
+---
+import { getMenusIndex, getMenu, type MenuDetail } from "../../lib/lecommis";
+
+export async function getStaticPaths() {
+  const index = await getMenusIndex("fr");
+
+  // Une page par menu_type. On charge le détail en parallèle.
+  const pages = await Promise.all(
+    index.menus.map(async (m) => ({
+      params: { slug: m.menu_type.slug },
+      props: { menu: await getMenu(m.menu_type.slug, "fr") },
+    }))
+  );
+
+  return pages;
+}
+
+const { menu } = Astro.props as { menu: MenuDetail };
+---
+
+<h1>{menu.menu_type.name}</h1>
+
+{menu.sections.map((section) => (
+  <section>
+    <h2>{section.name}</h2>
+    <ul>
+      {section.items.map((item) => (
+        <li>
+          <strong>{item.name}</strong>
+          {item.description && <p>{item.description}</p>}
+          {item.price !== null && <span>{item.price} €</span>}
+        </li>
+      ))}
+    </ul>
+  </section>
+))}
+```
+
+</CodeGroup>
+
+<Tip>
+  Pour un site bilingue, appelez l'API deux fois (`?locale=fr` et `?locale=en`) et générez des routes distinctes (`/fr/menus/...`, `/en/menus/...`). Le contenu diffère par locale ; le `content_revision`, lui, est commun aux deux langues. La traduction manquante en `en` retombe automatiquement sur le texte `fr`.
+</Tip>
+
+<Note>
+  Le champ `master_menu_url` de l'index pointe vers la **Carte unifiée** : le PDF qui regroupe toutes vos cartes en un seul document. Au build, vous pouvez le proposer en téléchargement direct sans appel supplémentaire à l'API.
+</Note>
+
+## Déclencher un rebuild par webhook
+
+Le webhook `establishment.content_updated` ne transporte pas le contenu : c'est un signal pour relancer le build. La plupart des hébergeurs statiques (Netlify, Vercel, Cloudflare Pages…) exposent un **build hook** : une URL qu'il suffit d'appeler en `POST` pour relancer un déploiement.
+
+On place une fonction serverless qui **vérifie la signature HMAC** puis appelle ce build hook. Ne déclenchez jamais le build sans vérifier la signature, sinon n'importe qui pourrait épuiser vos minutes de build.
+
+<CodeGroup>
+
+```ts netlify/functions/lecommis-webhook.ts
+import crypto from "node:crypto";
+
+const SECRET = process.env.LECOMMIS_WEBHOOK_SECRET!;
+const BUILD_HOOK_URL = process.env.NETLIFY_BUILD_HOOK!;
+
+function verifySignature(
+  raw: string,
+  signature: string | undefined,
+  timestamp: string | undefined
+): boolean {
+  if (!signature || !timestamp) return false;
+
+  // Tolérance d'horloge (anti-rejeu) : on rejette au-delà de 5 minutes.
+  if (Math.abs(Date.now() / 1000 - Number(timestamp)) > 300) return false;
+
+  const signedPayload = `${timestamp}.${raw}`;
+  const expected =
+    "sha256=" +
+    crypto.createHmac("sha256", SECRET).update(signedPayload).digest("hex");
+
+  const a = Buffer.from(expected);
+  const b = Buffer.from(signature);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+export default async (req: Request): Promise<Response> => {
+  const raw = await req.text(); // corps brut, indispensable pour la signature
+  const signature = req.headers.get("X-LeCommis-Signature") ?? undefined;
+  const timestamp = req.headers.get("X-LeCommis-Timestamp") ?? undefined;
+
+  if (!verifySignature(raw, signature, timestamp)) {
+    return new Response(JSON.stringify({ error: "invalid signature" }), {
+      status: 401,
+    });
+  }
+
+  const payload = JSON.parse(raw);
+
+  if (payload.type === "establishment.content_updated") {
+    // On relance le build du site statique.
+    await fetch(BUILD_HOOK_URL, { method: "POST" });
+  }
+
+  // 2xx : la livraison est considérée comme réussie, pas de retry.
+  return new Response(JSON.stringify({ ok: true }), { status: 200 });
+};
+```
+
+</CodeGroup>
+
+<Warning>
+  La signature est calculée sur `"{X-LeCommis-Timestamp}.{corps brut JSON}"`. Lisez le corps avec `req.text()` **avant** tout parsing : si vous re-sérialisez l'objet décodé, les octets diffèrent et la vérification échoue.
+</Warning>
+
+Les changements rapprochés sont fusionnés (debounce de 30 s) en une seule livraison, et l'endpoint applique 5 tentatives avec backoff croissant en cas d'échec. Votre fonction n'a donc pas besoin de gérer la coalescence : un seul `POST` au build hook par rafale de changements.
+
+Pour les détails de mise en œuvre (idempotence via `X-LeCommis-Delivery`, codes de retour attendus, retries), voir [l'implémentation des webhooks](/integrations/webhooks/implementation).

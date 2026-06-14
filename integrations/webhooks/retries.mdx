@@ -1,0 +1,73 @@
+---
+title: "Retries & idempotence"
+description: "Tentatives, backoff, debounce des changements rapprochés et déduplication par delivery_id."
+---
+
+Le Commis garantit la livraison « au moins une fois ». En pratique, cela veut dire deux choses pour votre intégration : une livraison peut être **réessayée** (donc reçue plusieurs fois), et des changements rapprochés peuvent être **fusionnés** en une seule livraison. Cette page détaille les deux mécanismes et comment vous y adapter.
+
+## Tentatives & backoff
+
+Le Commis effectue jusqu'à **5 tentatives** par livraison, avec un backoff croissant (`polynomially_longer` : l'intervalle s'allonge à chaque essai).
+
+| Résultat de votre réponse | Comportement |
+| --- | --- |
+| `2xx` | **Succès.** La livraison est considérée comme acquittée, aucune nouvelle tentative. |
+| `429`, `5xx`, erreur réseau | **Retryable.** Nouvelle tentative après backoff. |
+| Autres `4xx` (ex. `400`, `401`, `403`, `404`), erreur SSRF | **Non retryable.** Abandon immédiat, pas de nouvelle tentative. |
+
+<Warning>
+  Une signature invalide à laquelle vous répondez `401` est traitée comme **non retryable** : Le Commis n'insistera pas. Ne répondez `401` que quand vous rejetez vraiment la requête.
+</Warning>
+
+Après l'échec de la dernière tentative, **l'établissement est notifié en interne** afin que la défaillance de l'endpoint soit visible côté Le Commis.
+
+<Note>
+  L'état de chaque livraison (livrée / échouée) est consultable dans la page **« réglages API »** de l'établissement. En cas d'échec persistant, vérifiez-y l'historique des livraisons avant d'investiguer côté serveur.
+</Note>
+
+## Répondre vite
+
+Côté Le Commis, les timeouts sont courts : **connexion 3 s, lecture 5 s, écriture 5 s** (et HTTPS obligatoire). Si votre handler met trop longtemps, la requête est coupée et comptée comme un échec réseau (retryable).
+
+<Tip>
+  Vérifiez la signature, répondez `2xx` **immédiatement**, puis faites tout le travail (re-fetch API, purge cache, rebuild) dans une **tâche de fond**. Voir [Implémentation](/integrations/webhooks/implementation).
+</Tip>
+
+## Debounce 30 s : changements fusionnés
+
+Quand plusieurs modifications surviennent en rafale, Le Commis ne vous envoie pas une livraison par modification. Les changements rapprochés sont **fusionnés sur une fenêtre de 30 s** en une seule livraison :
+
+- les `changed_resources` des modifications sont **mergés** (union),
+- le `content_revision` est rafraîchi à la dernière valeur.
+
+Conséquence : une livraison peut couvrir **plusieurs ressources** à la fois. Par exemple, si quelqu'un édite les horaires puis un menu coup sur coup, vous pouvez recevoir une seule livraison avec `changed_resources: ["business_hours", "menus"]`.
+
+<Note>
+  Traitez toujours `changed_resources` comme un ensemble pouvant contenir plusieurs valeurs, jamais comme une valeur unique.
+</Note>
+
+## Idempotence : dédupliquer par `delivery_id`
+
+Parce qu'une livraison peut être réessayée, **votre endpoint peut recevoir deux fois la même livraison.** Rendez donc votre traitement idempotent en dédupliquant sur l'en-tête `X-LeCommis-Delivery` (identique au champ `delivery_id` du payload).
+
+Le principe : la première fois que vous voyez un `delivery_id`, vous l'enregistrez et vous traitez. Les fois suivantes, vous acquittez (`2xx`) sans retraiter.
+
+```javascript Node.js
+// Déduplication via Redis (SET NX EX).
+async function alreadyProcessed(deliveryId) {
+  // renvoie "OK" seulement à la première occurrence.
+  const res = await redis.set(`webhook:${deliveryId}`, "1", "NX", "EX", 86400);
+  return res === null;
+}
+
+// Dans le handler, après vérification de signature :
+if (await alreadyProcessed(deliveryId)) {
+  return res.status(200).send("ok"); // déjà traité
+}
+await queue.add("process-webhook", { deliveryId, payload });
+res.status(200).send("ok");
+```
+
+<Tip>
+  Conservez les `delivery_id` au moins quelques heures (par ex. 24 h) : assez longtemps pour couvrir l'horizon des retries, sans stocker indéfiniment.
+</Tip>

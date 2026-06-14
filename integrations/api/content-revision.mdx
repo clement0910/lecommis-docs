@@ -1,0 +1,80 @@
+---
+title: "content_revision"
+description: "Détecter les changements de contenu et invalider votre cache avec un compteur monotone."
+---
+
+`content_revision` est un **entier monotone par établissement** : il augmente à chaque modification du contenu publié (identité, horaires, menus, Carte unifiée). C'est le mécanisme recommandé pour savoir si vous devez re-lire l'API, purger un cache ou relancer un build.
+
+<Note>
+`content_revision` est **commun à tout l'établissement** : une seule valeur couvre l'identité, les horaires et les menus. Vous n'avez donc qu'un seul jeton à suivre par établissement.
+</Note>
+
+## Caractéristiques
+
+<CardGroup cols={2}>
+  <Card title="Monotone" icon="arrow-trend-up">
+    Strictement croissant. Une valeur plus grande = du contenu plus récent.
+  </Card>
+  <Card title="Par établissement" icon="building">
+    Une seule valeur pour tout l'établissement, quelle que soit la ressource.
+  </Card>
+  <Card title="Indépendant de la locale" icon="language">
+    **Même valeur** pour `fr` et `en` : une révision couvre toutes les langues.
+  </Card>
+  <Card title="Partout" icon="braces">
+    Présent sur l'établissement, les horaires, la liste et le détail des menus, et dans le payload webhook.
+  </Card>
+</CardGroup>
+
+## Détecter un changement
+
+Le principe : **stocker** la dernière révision connue, la **comparer** à celle reçue, et **re-fetcher** seulement si elle est supérieure.
+
+```text Pseudo-code
+revision_recue = reponse.content_revision
+
+si revision_recue > revision_stockee:
+    rafraichir le contenu (re-fetch / re-build)
+    revision_stockee = revision_recue
+sinon:
+    rien à faire (contenu inchangé)
+```
+
+### Exemple (JavaScript)
+
+```js Poll + comparaison
+const res = await fetch(
+  "https://app.lecommis.fr/api/v1/establishments/au-bistrot",
+  { headers: { "X-Api-Key": process.env.LECOMMIS_API_KEY } }
+);
+const data = await res.json();
+
+const lastKnown = Number(await store.get("au-bistrot:revision")) || 0;
+if (data.content_revision > lastKnown) {
+  await refreshSiteContent(data);                 // re-build / purge cache
+  await store.set("au-bistrot:revision", data.content_revision);
+}
+```
+
+## Cache et clés par locale
+
+Comme `content_revision` est **commun à toutes les locales**, une même valeur invalide à la fois `fr` et `en`. Le contenu des menus, lui, **diffère** par locale. Mettez donc la **locale dans votre clé de cache**, mais utilisez la **révision** comme jeton d'invalidation :
+
+```text
+clé de cache = "au-bistrot:menus:fr:rev67"
+clé de cache = "au-bistrot:menus:en:rev67"
+```
+
+Quand la révision passe à `68`, les deux clés sont périmées et vous re-fetchez `fr` et `en`. Voir [Sites multilingues](/i18n/multilingual-sites).
+
+<Tip>
+Combinez `content_revision` avec un cache HTTP local pour éviter les appels inutiles, et appliquez un backoff sur les réponses `429`. Voir [Quotas de requêtes](/essentials/rate-limiting).
+</Tip>
+
+## Préférez les webhooks au polling
+
+Le polling fonctionne, mais il interroge l'API à intervalle régulier même quand rien ne change. Les **webhooks sortants** vous notifient en temps réel : leur payload contient déjà `content_revision` et `changed_resources`, ce qui vous évite de deviner ce qui a bougé.
+
+<Card title="Webhooks sortants" icon="webhook" href="/integrations/webhooks/overview">
+  L'approche recommandée pour invalider votre cache dès qu'un changement survient.
+</Card>

@@ -1,0 +1,63 @@
+---
+title: "Carte unifiée"
+description: "Une URL stable qui renvoie vers le PDF combiné de toutes vos cartes. Toujours servie, sans activation."
+---
+
+La **Carte unifiée** est un PDF unique regroupant l'ensemble des cartes de l'établissement. C'est le fichier à utiliser quand vous voulez un seul lien « Voir la carte » à afficher partout.
+
+## Endpoint
+
+```bash
+GET https://app.lecommis.fr/r/master_menu?establishment={slug}
+```
+
+<ParamField query="establishment" type="string" required>
+  Le slug de l'établissement (jamais un identifiant numérique). Exemple : `au-bistrot`.
+</ParamField>
+
+La réponse est un **302** vers le PDF combiné, hébergé par Le Commis. Cette redirection est **toujours servie** : aucun flag à activer côté établissement.
+
+<Note>
+Le chemin technique reste `/r/master_menu` : seule l'appellation visible change, on parle désormais de la **Carte unifiée**.
+</Note>
+
+<Note>
+Si aucune Carte unifiée n'est attachée à l'établissement, la réponse est un **404** avec le texte brut `Menu non disponible`.
+</Note>
+
+## Intégration
+
+Collez simplement l'URL dans la page. Le navigateur suit le `302` jusqu'au PDF.
+
+<CodeGroup>
+
+```html Bouton « Voir la carte »
+<a
+  href="https://app.lecommis.fr/r/master_menu?establishment=au-bistrot"
+  target="_blank"
+  rel="noopener"
+  class="btn"
+>
+  Voir la carte
+</a>
+```
+
+```html PDF embarqué
+<iframe
+  src="https://app.lecommis.fr/r/master_menu?establishment=au-bistrot"
+  width="100%"
+  height="800"
+  title="Carte du restaurant"
+  style="border: 0"
+></iframe>
+```
+
+</CodeGroup>
+
+<Tip>
+L'URL pointe toujours vers la version courante de la Carte unifiée. Quand vous publiez une nouvelle carte dans Le Commis, le lien sert automatiquement le PDF à jour — rien à changer côté intégration.
+</Tip>
+
+## Quota de requêtes
+
+Comme toutes les redirections, l'endpoint est limité à **500 requêtes par heure et par IP** (`429` au-delà). Laissez le navigateur ou un CDN mettre le fichier en cache pour le trafic public. Voir [Quota de requêtes](/essentials/rate-limiting).

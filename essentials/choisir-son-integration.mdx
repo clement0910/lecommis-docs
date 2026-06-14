@@ -1,0 +1,44 @@
+---
+title: "Choisir son intégration"
+description: "API, redirections, webhooks : comparez les trois méthodes et trouvez la combinaison adaptée à votre projet."
+---
+
+Le Commis expose trois méthodes d'intégration. Elles ne sont pas exclusives : on les combine souvent. Cette page vous aide à choisir.
+
+## Comparatif
+
+| Méthode | Effort | Fraîcheur des données | Contrôle du rendu | Idéal pour |
+| --- | --- | --- | --- | --- |
+| **API publique** | Moyen — écrire du code de fetch et de rendu | À la demande (vous re-fetchez quand vous voulez) | Total — vous produisez votre propre HTML | Afficher des menus structurés, des horaires, l'identité avec votre design |
+| **Redirections / fichiers** | Faible — coller une URL | Toujours le menu courant (suivi automatique) | Aucun — vous affichez le PDF/l'image tels quels | Montrer rapidement un menu sans coder de rendu |
+| **Webhooks** | Moyen — exposer un endpoint HTTPS et vérifier la signature | Temps réel (signal poussé au changement) | N/A — ne sert pas à afficher | Invalider un cache, relancer un build automatiquement |
+
+## Comment choisir
+
+**Choisissez les redirections si** vous voulez le minimum d'effort. Vous collez une URL stable dans une balise `<img>`, `<iframe>`, `<a>` ou un bouton, et le navigateur est redirigé vers le fichier du menu courant. Aucun code de rendu à écrire, mais aucun contrôle non plus sur la mise en page : vous affichez le PDF ou l'image tels qu'ils ont été produits dans Le Commis.
+
+<Note>
+  L'URL de redirection est **stable** : elle ne change pas quand le menu est mis à jour. Vous la collez une seule fois, et elle pointe toujours vers le fichier du menu courant. La Carte unifiée (le PDF combiné de toutes les cartes) dispose elle aussi de sa propre URL stable.
+</Note>
+
+**Choisissez l'API si** vous voulez maîtriser le rendu. Vous lisez les données structurées en JSON (sections, items, prix, allergènes, horaires, coordonnées) et vous générez votre propre HTML, fidèle à la charte du site. C'est plus de travail, mais c'est la seule méthode qui vous donne un contrôle total sur l'affichage et l'accessibilité.
+
+**Ajoutez les webhooks si** vous voulez du temps réel. Un webhook n'affiche rien et ne remplace ni l'API ni les redirections : c'est un **signal**. À chaque changement de contenu, Le Commis appelle votre endpoint ; à vous de réagir en re-lisant l'API, en purgeant un cache ou en relançant un build. C'est ce qui rend une intégration statique (Astro, Next, cache CDN) auto-actualisée sans cron de polling.
+
+<Tip>
+  Le schéma le plus robuste combine les trois : l'**API** pour le rendu, les **webhooks** pour savoir *quand* re-fetcher, et le champ `content_revision` (présent sur l'API comme dans le payload webhook) pour décider *si* le re-fetch est nécessaire.
+</Tip>
+
+## En savoir plus
+
+<CardGroup cols={3}>
+  <Card title="API publique" icon="code" href="/integrations/api/overview">
+    Endpoints, authentification, formats de réponse.
+  </Card>
+  <Card title="Redirections & fichiers" icon="link" href="/integrations/redirects/overview">
+    URLs plug-and-play vers les PDF et images des menus.
+  </Card>
+  <Card title="Webhooks" icon="bell" href="/integrations/webhooks/overview">
+    Recevoir et vérifier les notifications de changement.
+  </Card>
+</CardGroup>
