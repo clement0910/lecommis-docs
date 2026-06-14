@@ -2,7 +2,7 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "Le Commis API",
-  "description": "Documentation développeur de l'API publique, des redirections d'assets et des webhooks Le Commis.",
+  "description": "Documentation développeur de l'API, des redirections d'assets et des webhooks Le Commis.",
   "colors": {
     "primary": "#6f7c45",
     "light": "#9aa86b",
@@ -27,7 +27,7 @@
             ]
           },
           {
-            "group": "API publique",
+            "group": "API",
             "pages": [
               "integrations/api/overview",
               "integrations/api/establishment",
@@ -70,14 +70,6 @@
               "essentials/rate-limiting",
               "essentials/errors",
               "essentials/best-practices"
-            ]
-          },
-          {
-            "group": "Exemples d'intégration",
-            "pages": [
-              "examples/wordpress",
-              "examples/astro",
-              "examples/nextjs-isr"
             ]
           },
           {

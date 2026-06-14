@@ -85,17 +85,9 @@ async function handle(payload) {
 }
 ```
 
-<Note>
-  Dans la boucle ci-dessus, la valeur `master_menu` correspond à la **Carte unifiée** (le PDF combiné de toutes les cartes). Elle se récupère sur le même endpoint `/menus`, via le champ `master_menu_url` de la réponse.
-</Note>
-
-<Tip>
-  Vous pouvez ignorer `changed_resources` et vous baser uniquement sur `content_revision` : si la valeur reçue est supérieure à votre dernière valeur connue, re-fetch ce dont vous avez besoin. Voir [Révision de contenu](/integrations/api/content-revision).
-</Tip>
-
 ## Re-fetch et authentification
 
-Les appels de re-fetch ciblent l'[API publique](/integrations/api/overview) et nécessitent l'en-tête `X-Api-Key`. La clé API et le secret de webhook sont deux secrets distincts : gardez-les tous deux côté serveur, jamais exposés au navigateur.
+Les appels de re-fetch ciblent l'[API](/integrations/api/overview) et nécessitent l'en-tête `X-Api-Key`. La clé API et le secret de webhook sont deux secrets distincts : gardez-les tous deux côté serveur, jamais exposés au navigateur.
 
 ## Checklist de mise en production
 
@@ -113,13 +105,7 @@ Les appels de re-fetch ciblent l'[API publique](/integrations/api/overview) et n
   <Card title="Sécurité & signature" icon="shield-check" href="/integrations/webhooks/security">
     Le détail de la vérification HMAC.
   </Card>
-  <Card title="Révision de contenu" icon="hashtag" href="/integrations/api/content-revision">
+  <Card title="content_revision" icon="hashtag" href="/integrations/api/content-revision">
     Détecter les changements et invalider le cache.
-  </Card>
-  <Card title="Exemple Astro" icon="rocket" href="/examples/astro">
-    Déclencher un rebuild de site statique sur webhook.
-  </Card>
-  <Card title="Exemple Next.js ISR" icon="bolt" href="/examples/nextjs-isr">
-    Revalider les pages à la réception d'un webhook.
   </Card>
 </CardGroup>

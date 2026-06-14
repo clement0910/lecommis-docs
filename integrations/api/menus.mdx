@@ -3,7 +3,7 @@ title: "Menus"
 description: "Lister les menus web d'un établissement et récupérer le détail (sections et items) d'un menu."
 ---
 
-L'API menus expose deux endpoints : la **liste** des menus web et le **détail** d'un menu (avec ses sections et items). Les deux acceptent `?locale=fr|en`. La liste expose également l'URL de la **Carte unifiée** (champ `master_menu_url`), le PDF qui combine toutes les cartes de l'établissement.
+L'API menus expose deux endpoints : la **liste** des menus web et le **détail** d'un menu (avec ses sections et items). Les deux acceptent `?locale=fr|en`. La liste expose également l'URL de la **Carte unifiée** (champ `master_menu_url`) : un fichier (PDF ou image) téléversé par l'établissement.
 
 | Méthode | Chemin | Description |
 | --- | --- | --- |
@@ -14,9 +14,26 @@ L'API menus expose deux endpoints : la **liste** des menus web et le **détail**
 Le `menu_type_slug` est **stable par établissement** (ex. `menu-du-midi`). Vous pouvez le coder en dur dans votre intégration. Si le menu n'existe pas (ou n'a pas de version courante), l'API renvoie `404 {"error":"Not found"}`.
 </Note>
 
-## Langue
+## Menu courant et méthode de diffusion
 
-Ajoutez `?locale=fr` ou `?locale=en` pour choisir la langue du contenu. Valeur absente sur le détail → `fr`. Valeur invalide → coercée silencieusement en `fr`. Seuls les **noms/descriptions d'items et noms de sections** sont traduits ; avec un repli `en → fr` si une traduction manque. Voir [Sélection de la langue](/i18n/selecting-language).
+L'API n'expose que le **menu courant** de chaque type de menu, et uniquement les types de menu diffusés sur le **web**.
+
+**Menu courant.** Un type de menu (ex. « Menu du midi ») peut avoir plusieurs versions datées. Le *menu courant* est la version en vigueur aujourd'hui :
+
+- Pour un menu **sans rotation dans le temps**, c'est simplement sa dernière version.
+- Pour un menu **daté** (rotation quotidienne, hebdomadaire ou mensuelle), c'est la version applicable à la date du jour ; à défaut, la dernière version passée est servie.
+
+**Méthode de diffusion.** Un type de menu peut être diffusé sur plusieurs canaux (web, impression, réseaux sociaux). **Seuls les menus dotés d'une méthode de diffusion _web_ sont actifs et renvoyés par l'API** (et par les redirections) : un menu sans diffusion web n'apparaît pas dans la réponse.
+
+## Langue (`?locale`)
+
+Ajoutez `?locale=fr` ou `?locale=en` pour choisir la langue de la réponse. Deux valeurs seulement sont acceptées : `fr` et `en`.
+
+- **Valeur absente ou non reconnue** → l'API répond en **français**.
+- Le paramètre agit sur deux choses : il **traduit le texte** (noms et descriptions des items, noms des sections) et il **filtre les fichiers** du menu selon la langue (voir [Fichiers du menu](#fichiers-du-menu-champ-assets)).
+- Si une traduction anglaise manque, le texte concerné **retombe en français** (`en → fr`). Ce repli ne s'applique **pas** aux fichiers.
+
+Voir [Sélection de la langue](/i18n/selecting-language).
 
 <Tabs>
   <Tab title="Liste des menus">
@@ -52,7 +69,7 @@ const menus = await res.json();
   "master_menu_url": "https://app.lecommis.fr/files/au-bistrot/carte-unifiee.pdf",
   "menus": [
     {
-      "menu_type": { "slug": "menu-du-midi", "name": "Menu du midi", "kind": "menu" },
+      "menu_type": { "slug": "menu-du-midi", "name": "Menu du midi", "kind": "menu", "source": "generated" },
       "reference_date": "2026-06-13",
       "assets": [
         { "language_scope": "fr", "urls": ["https://app.lecommis.fr/menus/au-bistrot/menu-du-midi/web_fr.png"] }
@@ -65,7 +82,7 @@ const menus = await res.json();
 ### Champs de la réponse
 
 <ResponseField name="master_menu_url" type="string | null">
-  URL du PDF de la **Carte unifiée** de l'établissement (toutes les cartes combinées en un seul document), si disponible.
+  URL du fichier de la **Carte unifiée** de l'établissement (PDF ou image), ou `null` s'il n'y en a pas.
 </ResponseField>
 
 <ResponseField name="menus" type="array">
@@ -81,6 +98,9 @@ const menus = await res.json();
         </ResponseField>
         <ResponseField name="kind" type="string">
           `menu` (offre composée) ou `card` (carte).
+        </ResponseField>
+        <ResponseField name="source" type="string">
+          Origine du contenu : `generated` (menu **structuré**, avec `sections` et items) ou `uploaded` (menu **importé en image/PDF** : `sections` est vide, le contenu est uniquement dans `assets`).
         </ResponseField>
       </Expandable>
     </ResponseField>
@@ -130,7 +150,7 @@ const menu = await res.json();
 ```json Réponse 200
 {
   "content_revision": 67,
-  "menu_type": { "slug": "menu-du-midi", "name": "Menu du midi", "kind": "menu" },
+  "menu_type": { "slug": "menu-du-midi", "name": "Menu du midi", "kind": "menu", "source": "generated" },
   "reference_date": "2026-06-13",
   "assets": [
     { "language_scope": "fr", "urls": ["https://app.lecommis.fr/menus/au-bistrot/menu-du-midi/web_fr.png"] }
@@ -164,7 +184,7 @@ const menu = await res.json();
 ### Champs de la réponse
 
 <ResponseField name="menu_type" type="object">
-  Identique à la liste : `slug`, `name`, `kind` (`menu` | `card`).
+  Identique à la liste : `slug`, `name`, `kind` (`menu` | `card`) et `source` (`generated` | `uploaded`).
 </ResponseField>
 
 <ResponseField name="reference_date" type="string | null">
@@ -176,7 +196,7 @@ const menu = await res.json();
 </ResponseField>
 
 <ResponseField name="sections" type="array">
-  Sections du menu, ordonnées par `position`.
+  Sections du menu, ordonnées par `position`. **Vide (`[]`) lorsque `menu_type.source` vaut `uploaded`** (menu importé en image/PDF) : le contenu est alors uniquement dans `assets`.
   <Expandable title="sections[]">
     <ResponseField name="name" type="string">
       Nom de la section (ex. `Entrées`). Traduit selon `?locale`.
@@ -234,8 +254,12 @@ Chaque menu porte un tableau `assets`. Une entrée du champ `assets` décrit un 
 </ResponseField>
 
 <ResponseField name="assets[].urls" type="array">
-  Tableau d'URLs des fichiers (image ou PDF). Plusieurs entrées = plusieurs pages.
+  Tableau d'URLs des fichiers. Plusieurs entrées = plusieurs pages.
 </ResponseField>
+
+<Note>
+  **Formats et taille.** Chaque fichier est une **image** (`PNG`, `JPEG`, `WebP`) ou un **PDF**, d'une taille maximale de **10 Mo**. Un même menu peut comporter plusieurs fichiers (une entrée du tableau `urls` par page).
+</Note>
 
 Sans `?locale`, **tous** les `language_scope` sont renvoyés. Avec `?locale`, seuls les fichiers correspondant à la langue demandée (y compris `fr_en`) sont retournés.
 
@@ -244,5 +268,5 @@ Il n'y a **aucun repli de langue sur les fichiers du menu**. Un fichier peut exi
 </Warning>
 
 <Note>
-Pour servir un fichier du menu directement via une URL plug-and-play (`<img>`, `<iframe>`…) sans appeler l'API, voyez les [redirections de fichiers du menu](/integrations/redirects/menu-assets).
+Pour servir un fichier du menu directement via une URL plug-and-play (`<img>`, `<iframe>`…) sans appeler l'API, voyez les [redirections de fichiers du menu](/integrations/redirects/menu-assets). En mode redirection, **seule la première page** du menu est servie ; pour récupérer **toutes** les pages, utilisez le champ `urls` de l'API.
 </Note>

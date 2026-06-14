@@ -9,7 +9,7 @@ Le Commis expose trois méthodes d'intégration. Elles ne sont pas exclusives : 
 
 | Méthode | Effort | Fraîcheur des données | Contrôle du rendu | Idéal pour |
 | --- | --- | --- | --- | --- |
-| **API publique** | Moyen — écrire du code de fetch et de rendu | À la demande (vous re-fetchez quand vous voulez) | Total — vous produisez votre propre HTML | Afficher des menus structurés, des horaires, l'identité avec votre design |
+| **API** | Moyen — écrire du code de fetch et de rendu | À la demande (vous re-fetchez quand vous voulez) | Total — vous produisez votre propre HTML | Afficher des menus structurés, des horaires, l'identité avec votre design |
 | **Redirections / fichiers** | Faible — coller une URL | Toujours le menu courant (suivi automatique) | Aucun — vous affichez le PDF/l'image tels quels | Montrer rapidement un menu sans coder de rendu |
 | **Webhooks** | Moyen — exposer un endpoint HTTPS et vérifier la signature | Temps réel (signal poussé au changement) | N/A — ne sert pas à afficher | Invalider un cache, relancer un build automatiquement |
 
@@ -32,7 +32,7 @@ Le Commis expose trois méthodes d'intégration. Elles ne sont pas exclusives : 
 ## En savoir plus
 
 <CardGroup cols={3}>
-  <Card title="API publique" icon="code" href="/integrations/api/overview">
+  <Card title="API" icon="code" href="/integrations/api/overview">
     Endpoints, authentification, formats de réponse.
   </Card>
   <Card title="Redirections & fichiers" icon="link" href="/integrations/redirects/overview">

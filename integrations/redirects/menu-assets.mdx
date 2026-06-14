@@ -26,7 +26,7 @@ GET https://app.lecommis.fr/r/menus?establishment={slug}&menu_type={menu_type_sl
 La réponse est un **302** vers le fichier web (image ou PDF) du **menu courant** pour ce `menu_type` et cette langue.
 
 <Warning>
-Cette redirection exige que `redirect_enabled` soit activé sur l'établissement. C'est une option **opt-in** (désactivée par défaut). Tant qu'elle n'est pas activée, l'endpoint répond **404** (`Menu non disponible`). **Seul l'administrateur de l'établissement** peut l'activer, dans les **réglages menus**, via une modale dédiée.
+Cette redirection exige que `redirect_enabled` soit activé sur l'établissement. C'est une option **opt-in** (désactivée par défaut). Tant qu'elle n'est pas activée, l'endpoint répond **404** (`Menu non disponible`). **Seul l'administrateur de l'établissement** peut l'activer.
 </Warning>
 
 ## Intégration
@@ -68,7 +68,7 @@ Collez l'URL dans une balise `<img>` pour afficher la carte, ou dans un `<a>` po
 </CodeGroup>
 
 <Tip>
-L'URL pointe toujours vers le menu courant : quand une nouvelle version est publiée dans Le Commis, le fichier servi est mis à jour automatiquement.
+L'URL pointe toujours vers le **menu courant** — la version du menu en vigueur aujourd'hui (voir [Menu courant](/integrations/api/menus#menu-courant-et-méthode-de-diffusion)). Quand une nouvelle version est publiée dans Le Commis, le fichier servi est mis à jour automatiquement.
 </Tip>
 
 ## Attention au fallback de langue

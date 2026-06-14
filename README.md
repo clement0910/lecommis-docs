@@ -1,6 +1,6 @@
 # Documentation Le Commis (Mintlify)
 
-Documentation développeur de l'API publique, des redirections d'assets et des webhooks Le Commis.
+Documentation développeur de l'API, des redirections d'assets et des webhooks Le Commis.
 
 ## Développement local
 
@@ -16,7 +16,7 @@ mint dev             # http://localhost:3000
 |---|---|
 | `docs.json` | Configuration Mintlify (navigation, thème, couleurs, onglet API Reference). |
 | `essentials/` | Introduction, quickstart, choix d'intégration, auth, rate limiting, erreurs, bonnes pratiques. |
-| `integrations/api/` | Les 4 endpoints de l'API publique v1. |
+| `integrations/api/` | Les 4 endpoints de l'API v1. |
 | `integrations/redirects/` | Redirections / URLs d'assets (plug-and-play). |
 | `integrations/webhooks/` | Webhooks sortants (HMAC, événements, retries). |
 | `i18n/` | Langues et internationalisation. |
@@ -27,7 +27,7 @@ mint dev             # http://localhost:3000
 
 La source de vérité est `openapi/v1/openapi.yaml` à la racine du repo, **générée par Rswag** — ne jamais éditer le YAML à la main.
 
-Régénérer après un changement de l'API publique :
+Régénérer après un changement de l'API :
 
 ```bash
 PATTERN="spec/requests/api/**/*_spec.rb" RAILS_ENV=test bin/rails rswag:specs:swaggerize

@@ -3,12 +3,12 @@ title: "Introduction"
 description: "Diffusez l'identité, les horaires et les menus d'un établissement vers vos sites grâce à l'API, aux redirections et aux webhooks Le Commis."
 ---
 
-Le Commis est un SaaS pour restaurants. Chaque **établissement** centralise son identité (nom, description, coordonnées, logo), ses **horaires**, ses **menus** et leurs **fichiers** (PDF et images). Cette documentation s'adresse aux intégrateurs qui veulent rediffuser ces données vers un site externe : page restaurant, carte en ligne, widget d'horaires, build statique, etc.
+Le Commis est un SaaS pour les **établissements** qui veulent centraliser leur identité (nom, description, coordonnées, logo), leurs **horaires**, leurs **menus** et leurs **fichiers** (PDF et images). Cette documentation s'adresse aux intégrateurs qui veulent rediffuser ces données vers un site externe.
 
 Trois méthodes complémentaires sont à votre disposition.
 
 <CardGroup cols={3}>
-  <Card title="API publique" icon="code" href="/integrations/api/overview">
+  <Card title="API" icon="code" href="/integrations/api/overview">
     Lisez les données structurées d'un établissement en JSON (identité, horaires, menus) depuis votre backend.
   </Card>
   <Card title="Redirections & fichiers" icon="link" href="/integrations/redirects/overview">
@@ -23,16 +23,12 @@ Trois méthodes complémentaires sont à votre disposition.
 
 | Besoin | Méthode recommandée |
 | --- | --- |
-| Afficher des menus structurés (sections, items, prix, allergènes) | API publique |
-| Construire votre propre rendu HTML des horaires ou de la carte | API publique |
+| Afficher des menus structurés (sections, items, prix, allergènes) | API |
+| Construire votre propre rendu HTML des horaires ou de la carte | API |
 | Afficher rapidement le PDF ou l'image d'un menu sans coder de rendu | Redirections & fichiers |
 | Mettre un lien direct vers la Carte unifiée téléchargeable | Redirections & fichiers |
 | Invalider un cache ou relancer un build quand le contenu change | Webhooks |
 | Garder un site statique (Astro, Next) à jour sans cron de polling | Webhooks |
-
-## À qui s'adresse cette doc
-
-Aux **freelances**, **agences web** et **intégrateurs** qui construisent ou maintiennent le site d'un restaurant. Que vous travailliez sous WordPress, Astro, Next, ou tout autre stack, les trois méthodes s'utilisent depuis n'importe quel langage : un appel HTTP suffit pour l'API, une URL suffit pour les redirections, un endpoint HTTPS suffit pour recevoir les webhooks.
 
 <Note>
   La base URL de l'API est `https://app.lecommis.fr/api/v1`. L'API est en **lecture seule** (uniquement des requêtes `GET`) et **opt-in** : elle doit d'abord être activée par l'administrateur de l'établissement dans les réglages avant de pouvoir l'appeler. Vous ne pouvez donc jamais modifier de données via l'API, seulement les lire.

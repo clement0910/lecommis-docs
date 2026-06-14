@@ -1,9 +1,9 @@
 ---
 title: "Gestion des erreurs"
-description: "Format d'erreur unifié et codes HTTP renvoyés par l'API publique."
+description: "Format d'erreur unifié et codes HTTP renvoyés par l'API."
 ---
 
-L'API publique Le Commis renvoie un format d'erreur **plat** et un petit ensemble de codes HTTP. Les endpoints de lecture (`GET`) ne renvoient ni `400` ni `422`.
+L'API Le Commis renvoie un format d'erreur **plat** et un petit ensemble de codes HTTP. Les endpoints de lecture (`GET`) ne renvoient ni `400` ni `422`.
 
 ## Format d'erreur
 
@@ -15,21 +15,12 @@ Toutes les erreurs partagent la même structure JSON à plat :
 }
 ```
 
-Certaines erreurs peuvent inclure un tableau `details` pour préciser le problème :
-
-```json
-{
-  "error": "Validation failed",
-  "details": ["champ X manquant", "champ Y invalide"]
-}
-```
-
 <ResponseField name="error" type="string" required>
   Message d'erreur lisible décrivant la nature du problème.
 </ResponseField>
 
 <ResponseField name="details" type="string[]">
-  Optionnel. Tableau de précisions, une chaîne par point de détail. Absent quand il n'y a rien à détailler.
+  Optionnel et **réservé** : les endpoints de lecture actuels (`GET`) ne renvoient jamais de `details`. Le champ existe dans le schéma d'erreur mais n'est pas émis aujourd'hui.
 </ResponseField>
 
 ## Codes HTTP
@@ -37,7 +28,7 @@ Certaines erreurs peuvent inclure un tableau `details` pour préciser le problè
 | Code | `error` | Cause |
 | --- | --- | --- |
 | `401` | `Unauthorized` | Clé d'API absente ou invalide dans `X-Api-Key`. |
-| `404` | `Not found` | Slug inconnu, **ou** API publique désactivée, **ou** menu inexistant. |
+| `404` | `Not found` | Slug inconnu, **ou** API désactivée, **ou** menu inexistant. |
 | `429` | `Rate limit exceeded` | Quota de requêtes dépassé. |
 
 <Note>
@@ -61,7 +52,7 @@ Voir [Authentification](/essentials/authentication) pour transmettre correctemen
 Trois causes possibles, **indistinguables** par conception :
 
 - le `slug` d'établissement n'existe pas ;
-- l'établissement existe mais son **API publique est désactivée** (`public_api_enabled` à `false`) ;
+- l'établissement existe mais son **API est désactivée** (`public_api_enabled` à `false`) ;
 - le `menu_type_slug` demandé n'a pas de menu courant.
 
 ```json

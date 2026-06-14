@@ -45,7 +45,7 @@ Cette page liste les événements de webhook que Le Commis peut émettre. Aujour
     </ResponseField>
 
     <ResponseField name="content_revision" type="integer">
-      La nouvelle [révision de contenu](/integrations/api/content-revision) de l'établissement, après le changement. Entier monotone, par établissement, **indépendant de la locale**.
+      La nouvelle valeur de [`content_revision`](/integrations/api/content-revision) de l'établissement, après le changement. Entier monotone, par établissement, **indépendant de la locale**.
     </ResponseField>
 
     <ResponseField name="changed_resources" type="string[]">
@@ -71,12 +71,12 @@ Mappez chaque valeur de `changed_resources` vers l'endpoint API à rafraîchir :
 | `master_menu` | La Carte unifiée (PDF combiné de toutes les cartes) | [`GET /establishments/{slug}/menus`](/integrations/api/menus) — champ `master_menu_url` |
 
 <Tip>
-  En pratique, beaucoup d'intégrations ignorent le détail de `changed_resources` et se contentent de comparer `content_revision` à la dernière valeur connue, puis re-fetchent ce dont elles ont besoin. C'est plus simple et tout aussi correct. Voir [Révision de contenu](/integrations/api/content-revision).
+  En pratique, beaucoup d'intégrations ignorent le détail de `changed_resources` et se contentent de comparer `content_revision` à la dernière valeur connue, puis re-fetchent ce dont elles ont besoin. C'est plus simple et tout aussi correct. Voir [`content_revision`](/integrations/api/content-revision).
 </Tip>
 
 ## Événement de test
 
-Le bouton **« test delivery »** des réglages API envoie un événement `establishment.webhook_test` à votre URL. Il suit le même format d'en-têtes et de signature que les événements réels, ce qui vous permet de valider votre vérification de signature de bout en bout sans attendre un vrai changement de contenu.
+Le bouton **« test delivery »** des **Paramètres de l'API** envoie un événement `establishment.webhook_test` à votre URL. Il suit le même format d'en-têtes et de signature que les événements réels, ce qui vous permet de valider votre vérification de signature de bout en bout sans attendre un vrai changement de contenu.
 
 <Note>
   D'autres familles d'événements arriveront (notifications de domaine au-delà du simple contenu publiable). Consultez la [roadmap](/roadmap) pour suivre les ajouts. Concevez votre handler pour ignorer poliment un `type` inconnu plutôt que d'échouer.

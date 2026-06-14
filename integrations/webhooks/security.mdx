@@ -100,8 +100,8 @@ app.post(
 
 ## Le secret de signature
 
-Le `signing_secret` est propre à chaque endpoint webhook, configuré dans la page **« réglages API »** de l'établissement. Vous pouvez le **régénérer** (`regenerate_secret`) à tout moment depuis ces mêmes réglages API — pensez alors à mettre à jour la valeur côté votre serveur. Stockez-le comme un secret (variable d'environnement, coffre-fort), jamais en clair dans le code.
+Le `signing_secret` est propre à chaque endpoint webhook, configuré depuis **Réglages de l'établissement → Paramètres de l'API**. Vous pouvez le **régénérer** (`regenerate_secret`) à tout moment depuis ces mêmes réglages — pensez alors à mettre à jour la valeur côté votre serveur. Stockez-le comme un secret (variable d'environnement, coffre-fort), jamais en clair dans le code.
 
 <Note>
-  Régénérer le secret depuis les réglages API invalide immédiatement l'ancienne valeur : les livraisons signées avec l'ancien secret échoueront jusqu'à ce que votre serveur utilise le nouveau. Régénérez quand vous suspectez une fuite, puis déployez la nouvelle valeur sans délai.
+  Régénérer le secret depuis les **Paramètres de l'API** invalide immédiatement l'ancienne valeur : les livraisons signées avec l'ancien secret échoueront jusqu'à ce que votre serveur utilise le nouveau. Régénérez quand vous suspectez une fuite, puis déployez la nouvelle valeur sans délai.
 </Note>

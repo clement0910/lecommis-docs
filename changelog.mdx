@@ -1,13 +1,13 @@
 ---
 title: "Changelog"
-description: "Historique des évolutions de l'API publique, des redirections de fichiers et des webhooks Le Commis."
+description: "Historique des évolutions de l'API, des redirections de fichiers et des webhooks Le Commis."
 ---
 
-<Update label="Juin 2026" description="Lancement de l'API publique v1">
+<Update label="Juin 2026" description="Lancement de l'API v1">
 
-Première version publique de la plateforme d'intégration Le Commis. Un établissement peut désormais diffuser ses informations vers des sites externes (site vitrine, build statique, application) via trois canaux complémentaires.
+Première version publique de la plateforme d'intégration Le Commis. Un établissement peut désormais diffuser ses informations vers des sites externes via trois canaux complémentaires.
 
-## API publique v1 (lecture seule)
+## API v1 (lecture seule)
 
 Quatre endpoints JSON, tous authentifiés par le header `X-Api-Key` et scopés sur le `slug` de l'établissement :
 
@@ -38,7 +38,7 @@ Quatre endpoints JSON, tous authentifiés par le header `X-Api-Key` et scopés s
 
 Des URLs plug-and-play en `302` à coller directement dans une balise `<img>`, `<iframe>` ou un lien :
 
-- `GET /r/master_menu?establishment={slug}` — PDF de la Carte unifiée combinée (toujours servi).
+- `GET /r/master_menu?establishment={slug}` — fichier de la Carte unifiée (toujours servi).
 - `GET /r/menus?establishment={slug}&menu_type={menu_type_slug}&locale={fr|en}` — fichier web du menu courant (nécessite `redirect_enabled`).
 
 ## Webhooks sortants

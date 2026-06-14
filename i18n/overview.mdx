@@ -5,11 +5,24 @@ description: "Comment Le Commis gère le français et l'anglais : ce qui est tra
 
 Le Commis expose deux langues : **`fr`** (le français, langue par défaut) et **`en`** (l'anglais). Il n'y a pas d'autre locale.
 
-La traduction ne couvre **que le contenu des menus**. L'identité de l'établissement (nom, description, catégorie) n'est jamais localisée : elle est servie telle qu'elle a été saisie.
+Le multilingue ne couvre **que le contenu des menus**. L'identité de l'établissement (nom, description, catégorie) n'est jamais localisée : elle est servie telle qu'elle a été saisie.
+
+## Le multilingue est un choix de l'établissement
+
+L'anglais n'est **pas** une traduction automatique produite à la volée par l'API. Les langues d'un menu sont décidées **au moment où l'établissement le génère**. Pour chaque menu, l'établissement choisit :
+
+- **les langues produites** — le **français** (toujours présent par défaut), et éventuellement l'**anglais** ;
+- **le format des fichiers** — soit **un fichier par langue** (vous obtenez alors des `language_scope` `fr` et `en` distincts), soit **un seul fichier couvrant plusieurs langues** (un `language_scope` `fr_en`).
+
+C'est ce choix qui explique les trois valeurs de `language_scope` (`fr`, `en`, `fr_en`) que vous voyez sur les [fichiers du menu](/integrations/api/menus#fichiers-du-menu-champ-assets).
+
+<Note>
+  Conséquence : l'anglais n'est disponible que si l'établissement l'a produit. Un menu peut n'exister qu'en français — `?locale=en` renverra alors le texte français (repli `en → fr`) et il peut n'y avoir **aucun fichier anglais**. Contrôlez toujours `language_scope` avant d'afficher un fichier.
+</Note>
 
 ## Ce qui est traduit
 
-Seul le **contenu de menu** est multilingue, géré côté backend en JSONB :
+Seul le **contenu de menu** est multilingue :
 
 - les **noms et descriptions d'items** ;
 - les **noms de sections** d'un menu.

@@ -1,9 +1,9 @@
 ---
 title: "Authentification"
-description: "Authentifiez vos appels à l'API publique Le Commis avec une clé par établissement."
+description: "Authentifiez vos appels à l'API Le Commis avec une clé par établissement."
 ---
 
-L'API publique Le Commis s'authentifie avec une **clé d'API par établissement**, transmise dans l'en-tête HTTP `X-Api-Key`. Chaque requête vers `https://app.lecommis.fr/api/v1` doit porter cet en-tête.
+L'API Le Commis s'authentifie avec une **clé d'API par établissement**, transmise dans l'en-tête HTTP `X-Api-Key`. Chaque requête vers `https://app.lecommis.fr/api/v1` doit porter cet en-tête.
 
 ## L'en-tête `X-Api-Key`
 
@@ -49,21 +49,21 @@ La clé d'API est un secret destiné à un usage **serveur-à-serveur**. Utilise
 
 ## Activation et rotation
 
-L'API publique d'un établissement doit être **activée** pour répondre. Tant qu'elle est désactivée, tous les appels renvoient un `404` (voir ci-dessous).
+L'API d'un établissement doit être **activée** pour répondre. Tant qu'elle est désactivée, tous les appels renvoient un `404` (voir ci-dessous).
 
 <Note>
-  Seul l'**administrateur de l'établissement** peut activer ou désactiver l'API publique et régénérer la clé. Ces actions se font depuis la page **« réglages API »** de l'établissement. Si vous ne voyez pas ces options, demandez à l'administrateur de votre établissement.
+  Seul l'**administrateur de l'établissement** peut activer ou désactiver l'API et régénérer la clé. Ces actions se font depuis **Réglages de l'établissement → Paramètres de l'API**. Si vous ne voyez pas ces options, demandez à l'administrateur de votre établissement.
 </Note>
 
 <Steps>
-  <Step title="Activer l'API publique">
-    Depuis la page « réglages API » de l'établissement, l'administrateur active l'API publique (`public_api_enabled`). La clé d'API y est affichée.
+  <Step title="Activer l'API">
+    Depuis **Réglages de l'établissement → Paramètres de l'API**, l'administrateur active l'API (`public_api_enabled`). La clé d'API y est affichée.
   </Step>
   <Step title="Récupérer la clé">
     Copiez la clé et stockez-la dans le coffre de secrets de votre backend (variable d'environnement, gestionnaire de secrets).
   </Step>
   <Step title="Faire tourner la clé si besoin">
-    En cas de compromission, l'administrateur régénère la clé (`regenerate_api_key`) depuis la page « réglages API » de l'établissement. L'ancienne clé est immédiatement invalidée ; pensez à mettre à jour votre backend.
+    En cas de compromission, l'administrateur régénère la clé depuis **Paramètres de l'API**. L'ancienne clé est immédiatement invalidée ; pensez à mettre à jour votre backend.
   </Step>
 </Steps>
 
@@ -77,7 +77,7 @@ L'API publique d'un établissement doit être **activée** pour répondre. Tant 
 
 ### Pourquoi un `404` et non un `403` ?
 
-Lorsque l'API publique d'un établissement est **désactivée** (ou que le `slug` n'existe pas), l'API renvoie volontairement un `404 Not found` — et non un `403 Forbidden`.
+Lorsque l'API d'un établissement est **désactivée** (ou que le `slug` n'existe pas), l'API renvoie volontairement un `404 Not found` — et non un `403 Forbidden`.
 
 <Info>
   Ce choix est délibéré : un `403` confirmerait l'existence de l'établissement. Le `404` **masque l'existence** de la ressource, comme s'il n'y avait rien à cette adresse. Vous ne pouvez donc pas distinguer « établissement inexistant » de « API non activée » — c'est voulu.

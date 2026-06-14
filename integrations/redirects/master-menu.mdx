@@ -1,9 +1,13 @@
 ---
 title: "Carte unifiée"
-description: "Une URL stable qui renvoie vers le PDF combiné de toutes vos cartes. Toujours servie, sans activation."
+description: "Une URL stable qui renvoie vers le fichier de votre Carte unifiée. Toujours servie, sans activation."
 ---
 
-La **Carte unifiée** est un PDF unique regroupant l'ensemble des cartes de l'établissement. C'est le fichier à utiliser quand vous voulez un seul lien « Voir la carte » à afficher partout.
+La **Carte unifiée** est le document unique (PDF ou image) qui présente toute la carte de l'établissement. C'est le fichier à utiliser quand vous voulez un seul lien « Voir la carte » à afficher partout.
+
+<Note>
+  La Carte unifiée est un fichier **téléversé** par l'établissement, **pas** un document généré automatiquement par Le Commis. Elle s'adresse aux établissements qui possèdent déjà une carte complète et ne souhaitent pas (encore) passer par la génération Le Commis. La génération automatique de ce document est prévue plus tard.
+</Note>
 
 ## Endpoint
 
@@ -15,7 +19,7 @@ GET https://app.lecommis.fr/r/master_menu?establishment={slug}
   Le slug de l'établissement (jamais un identifiant numérique). Exemple : `au-bistrot`.
 </ParamField>
 
-La réponse est un **302** vers le PDF combiné, hébergé par Le Commis. Cette redirection est **toujours servie** : aucun flag à activer côté établissement.
+La réponse est un **302** vers le fichier de la Carte unifiée, hébergé par Le Commis. Cette redirection est **toujours servie** : aucun flag à activer côté établissement.
 
 <Note>
 Le chemin technique reste `/r/master_menu` : seule l'appellation visible change, on parle désormais de la **Carte unifiée**.

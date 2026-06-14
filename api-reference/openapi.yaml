@@ -3,8 +3,8 @@ openapi: 3.0.1
 info:
   title: Le Commis API
   version: v1
-  description: API publique permettant aux sites externes de lire les informations
-    à jour d'un établissement.
+  description: API permettant aux sites externes de lire les informations à jour d'un
+    établissement.
 servers:
 - url: https://app.lecommis.fr
   description: Production
@@ -307,6 +307,7 @@ components:
       - slug
       - name
       - kind
+      - source
       properties:
         slug:
           type: string
@@ -320,6 +321,15 @@ components:
           - menu
           - card
           example: menu
+        source:
+          type: string
+          enum:
+          - generated
+          - uploaded
+          example: generated
+          description: 'Origine du contenu. `generated` : menu structuré (sections
+            et items disponibles). `uploaded` : menu importé en image ou PDF, `sections`
+            est alors vide et le contenu se trouve uniquement dans `assets`.'
     MenuAsset:
       type: object
       additionalProperties: false
@@ -450,6 +460,9 @@ components:
             "$ref": "#/components/schemas/MenuAsset"
         sections:
           type: array
+          description: 'Sections du menu, ordonnées, avec leurs items. Vide (`[]`)
+            lorsque `menu_type.source` vaut `uploaded` (menu image/PDF) : le contenu
+            est alors uniquement dans `assets`.'
           items:
             "$ref": "#/components/schemas/MenuSection"
     MenusIndex:

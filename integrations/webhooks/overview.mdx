@@ -7,11 +7,11 @@ Les webhooks Le Commis vous notifient en temps quasi réel lorsque le contenu d'
 
 ## Un signal, pas un transport de données
 
-Le point le plus important à intégrer : **un webhook Le Commis est un signal, pas une livraison de contenu.** Le payload ne contient jamais le menu, les horaires ou le profil mis à jour. Il vous dit uniquement *quel(s) type(s) de ressource a changé* et *quelle est la nouvelle révision de contenu*.
+Le point le plus important à intégrer : **un webhook Le Commis est un signal, pas une livraison de contenu.** Le payload ne contient jamais le menu, les horaires ou le profil mis à jour. Il vous dit uniquement *quel(s) type(s) de ressource a changé* et *quelle est la nouvelle valeur de `content_revision`*.
 
 C'est à vous, en réaction, de :
 
-- re-lire l'[API publique](/integrations/api/overview) pour récupérer le contenu frais,
+- re-lire l'[API](/integrations/api/overview) pour récupérer le contenu frais,
 - purger votre cache,
 - ou relancer le build de votre site statique.
 
@@ -23,7 +23,7 @@ C'est à vous, en réaction, de :
 
 <Steps>
   <Step title="Un contenu change">
-    Quelqu'un modifie le profil, les horaires ou un menu de l'établissement dans Le Commis. La [révision de contenu](/integrations/api/content-revision) de l'établissement est incrémentée.
+    Quelqu'un modifie le profil, les horaires ou un menu de l'établissement dans Le Commis. La valeur de [`content_revision`](/integrations/api/content-revision) de l'établissement est incrémentée.
   </Step>
   <Step title="Le Commis POST un webhook signé">
     Une requête `POST` est envoyée à votre URL de réception, avec un corps JSON et un en-tête de signature HMAC (`X-LeCommis-Signature`).
@@ -35,21 +35,21 @@ C'est à vous, en réaction, de :
     Selon `changed_resources`, vous appelez les endpoints concernés pour récupérer le contenu à jour.
   </Step>
   <Step title="Vous invalidez / rebuild">
-    Vous purgez votre cache, ou vous déclenchez un rebuild de votre site (Astro, Next.js ISR, etc.).
+    Vous purgez votre cache, ou vous déclenchez un rebuild de votre site statique.
   </Step>
 </Steps>
 
 ## Activer les webhooks
 
-La configuration du webhook (URL de réception + secret de signature) se fait dans la page **« réglages API »** de l'établissement — la même page que celle où vous récupérez la clé API.
+La configuration du webhook (URL de réception + secret de signature) se fait depuis **Réglages de l'établissement → Paramètres de l'API** — la même page que celle où vous récupérez la clé API.
 
 <Note>
-  **Seul l'administrateur** de l'établissement peut activer et configurer le webhook. Une fois configuré, vous pouvez **suivre l'état des livraisons (livrée / échouée)** depuis cette même page « réglages API », sans accéder au code de réception.
+  **Seul l'administrateur** de l'établissement peut activer et configurer le webhook. Une fois configuré, vous pouvez **suivre l'état des livraisons (livrée / échouée)** depuis cette même page **Paramètres de l'API**, sans accéder au code de réception.
 </Note>
 
 1. Renseignez une **URL HTTPS publique** de réception (le `http://` est refusé).
 2. Notez le **secret de signature** (`signing_secret`) généré pour cet endpoint — vous en avez besoin pour vérifier les requêtes. Il peut être régénéré.
-3. Vérifiez que l'**API publique de l'établissement est activée** : un endpoint webhook n'est `operational` que si le webhook *et* l'API publique sont actifs.
+3. Vérifiez que l'**API de l'établissement est activée** : un endpoint webhook n'est `operational` que si le webhook *et* l'API sont actifs.
 
 <Tip>
   Un bouton **« test delivery »** envoie une livraison de test (`establishment.webhook_test`) à votre URL. Servez-vous-en pour valider votre vérification de signature avant la mise en production.

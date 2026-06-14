@@ -1,13 +1,17 @@
 ---
 title: "Démarrage rapide"
-description: "Activez l'API publique et réussissez votre premier appel authentifié en quelques minutes."
+description: "Activez l'API et réussissez votre premier appel authentifié en quelques minutes."
 ---
 
 L'objectif de cette page : passer un premier appel réussi à l'API Le Commis. Comptez quelques minutes. Vous aurez besoin d'un accès aux réglages de l'établissement et d'un terminal (ou de votre langage favori).
 
 <Steps>
   <Step title="Activer l'API et récupérer la clé">
-    Dans les **réglages de l'établissement**, activez l'API publique, puis récupérez la clé `X-Api-Key` propre à cet établissement.
+    Dans les **réglages de l'établissement**, activez l'API, puis récupérez la clé `X-Api-Key` propre à cet établissement.
+
+    <Note>
+      Seul un **administrateur** de l'établissement peut activer l'API et générer la clé. Si vous n'avez pas accès aux **Paramètres de l'API**, demandez à l'administrateur de l'établissement de l'activer.
+    </Note>
 
     Cette clé est un **secret par établissement** : c'est elle qui authentifie chaque appel. Vous pouvez la régénérer à tout moment depuis les mêmes réglages (la rotation invalide l'ancienne clé).
 
@@ -43,7 +47,7 @@ L'objectif de cette page : passer un premier appel réussi à l'API Le Commis. C
     </CodeGroup>
 
     <Info>
-      Si vous obtenez `401 {"error":"Unauthorized"}`, la clé est absente ou invalide. Si vous obtenez `404 {"error":"Not found"}`, soit le slug est inconnu, soit l'API publique n'est pas activée pour cet établissement.
+      Si vous obtenez `401 {"error":"Unauthorized"}`, la clé est absente ou invalide. Si vous obtenez `404 {"error":"Not found"}`, soit le slug est inconnu, soit l'API n'est pas activée pour cet établissement.
     </Info>
   </Step>
 
