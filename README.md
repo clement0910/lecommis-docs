@@ -6,7 +6,6 @@ Documentation développeur de l'API, des redirections d'assets et des webhooks L
 
 ```bash
 npm i -g mint        # CLI Mintlify
-cd mintlify
 mint dev             # http://localhost:3000
 ```
 
@@ -20,23 +19,20 @@ mint dev             # http://localhost:3000
 | `integrations/redirects/` | Redirections / URLs d'assets (plug-and-play). |
 | `integrations/webhooks/` | Webhooks sortants (HMAC, événements, retries). |
 | `i18n/` | Langues et internationalisation. |
-| `examples/` | Exemples WordPress, Astro, Next.js. |
-| `api-reference/openapi.yaml` | **Copie synchronisée** de `../openapi/v1/openapi.yaml`. Ne pas éditer à la main. |
+| `api-reference/openapi.yaml` | **Copie synchronisée** depuis le repo de l'app (`openapi/v1/openapi.yaml`). Ne pas éditer à la main. |
 
 ## Source OpenAPI
 
-La source de vérité est `openapi/v1/openapi.yaml` à la racine du repo, **générée par Rswag** — ne jamais éditer le YAML à la main.
+`api-reference/openapi.yaml` est une **copie** : la source de vérité est `openapi/v1/openapi.yaml` dans le repo de l'app, **générée par Rswag** — jamais éditée à la main.
 
-Régénérer après un changement de l'API :
+Régénérer (dans le repo de l'app) après un changement de l'API :
 
 ```bash
-PATTERN="spec/requests/api/**/*_spec.rb" RAILS_ENV=test bin/rails rswag:specs:swaggerize
+PATTERN="spec/requests/api/**/*_spec.rb" RAILS_ENV=test SWAGGER_DRY_RUN=0 bin/rails rswag:specs:swaggerize
 ```
 
-La GitHub Action `.github/workflows/sync-openapi.yml` recopie automatiquement la spec dans `mintlify/api-reference/openapi.yaml` à chaque push sur `master` qui touche la spec.
+La GitHub Action `sync-openapi.yml` (dans le repo de l'app) pousse automatiquement la spec dans ce repo (`api-reference/openapi.yaml`) à chaque push sur `master` qui touche la spec.
 
 ## Déploiement
 
-La doc est déployée par la **Mintlify GitHub App** configurée avec `/mintlify` comme content directory : tout push sur `master` met la doc en ligne.
-
-> À faire une fois : connecter le repo dans le dashboard Mintlify et pointer le content directory sur `mintlify/`. Ajouter de vrais `logo/light.svg`, `logo/dark.svg` et `favicon.svg` (placeholders pour l'instant).
+La doc est déployée par la **Mintlify GitHub App** (content directory à la racine du repo) : tout push sur `master` met la doc en ligne.

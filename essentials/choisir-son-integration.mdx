@@ -18,12 +18,12 @@ Le Commis expose trois méthodes d'intégration. Elles ne sont pas exclusives : 
 **Choisissez les redirections si** vous voulez le minimum d'effort. Vous collez une URL stable dans une balise `<img>`, `<iframe>`, `<a>` ou un bouton, et le navigateur est redirigé vers le fichier du menu courant. Aucun code de rendu à écrire, mais aucun contrôle non plus sur la mise en page : vous affichez le PDF ou l'image tels qu'ils ont été produits dans Le Commis.
 
 <Note>
-  L'URL de redirection est **stable** : elle ne change pas quand le menu est mis à jour. Vous la collez une seule fois, et elle pointe toujours vers le fichier du menu courant. La Carte unifiée (le PDF combiné de toutes les cartes) dispose elle aussi de sa propre URL stable.
+  L'URL de redirection est **stable** : elle ne change pas quand le menu est mis à jour. Vous la collez une seule fois, et elle pointe toujours vers le fichier du menu courant. La Carte unifiée — le fichier (PDF ou image) téléversé par l'établissement — dispose elle aussi de sa propre URL stable.
 </Note>
 
 **Choisissez l'API si** vous voulez maîtriser le rendu. Vous lisez les données structurées en JSON (sections, items, prix, allergènes, horaires, coordonnées) et vous générez votre propre HTML, fidèle à la charte du site. C'est plus de travail, mais c'est la seule méthode qui vous donne un contrôle total sur l'affichage et l'accessibilité.
 
-**Ajoutez les webhooks si** vous voulez du temps réel. Un webhook n'affiche rien et ne remplace ni l'API ni les redirections : c'est un **signal**. À chaque changement de contenu, Le Commis appelle votre endpoint ; à vous de réagir en re-lisant l'API, en purgeant un cache ou en relançant un build. C'est ce qui rend une intégration statique (Astro, Next, cache CDN) auto-actualisée sans cron de polling.
+**Ajoutez les webhooks si** vous voulez du temps réel. Un webhook n'affiche rien et ne remplace ni l'API ni les redirections : c'est un **signal**. À chaque changement de contenu, Le Commis appelle votre endpoint ; à vous de réagir en re-lisant l'API, en purgeant un cache ou en relançant un build. C'est ce qui rend un site statique ou un cache CDN auto-actualisé sans cron de polling.
 
 <Tip>
   Le schéma le plus robuste combine les trois : l'**API** pour le rendu, les **webhooks** pour savoir *quand* re-fetcher, et le champ `content_revision` (présent sur l'API comme dans le payload webhook) pour décider *si* le re-fetch est nécessaire.
