@@ -536,10 +536,31 @@ components:
           type: string
           nullable: true
           example: Bistrot de quartier, cuisine de saison.
+        business_type:
+          type: string
+          enum:
+          - restaurant
+          - wine_shop
+          - bar
+          - cafe
+          - bakery
+          - caterer
+          - retail_store
+          example: restaurant
+          description: Type structurel de commerce.
+        public_category:
+          type: string
+          nullable: true
+          example: Restaurant français
+          description: Libellé libre affiché publiquement (ex. « Néo bistrot & Cave
+            à vin »).
         category:
           type: string
           nullable: true
           example: Restaurant français
+          deprecated: true
+          description: 'Déprécié : alias de public_category, sera retiré dans une
+            prochaine version.'
         website_url:
           type: string
           nullable: true
