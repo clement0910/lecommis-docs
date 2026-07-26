@@ -3,6 +3,49 @@ title: "Changelog"
 description: "Historique des évolutions de l'API, des redirections de fichiers et des webhooks Le Commis."
 ---
 
+<Update label="Juillet 2026" description="Type de commerce, catégorie publique et établissements en brouillon">
+
+## Nouveaux champs sur `GET /api/v1/establishments/{slug}`
+
+Deux champs viennent préciser la nature de l'établissement :
+
+- **`business_type`** — type structurel de commerce, valeur d'une liste fermée : `restaurant`, `wine_shop`, `bar`, `cafe`, `bakery`, `caterer`, `retail_store`. Toujours renvoyé et jamais `null`. Les établissements existants ont été initialisés à `restaurant`.
+- **`public_category`** — libellé libre affiché publiquement (ex. « Néo bistrot & Cave à vin »), `null` s'il n'est pas renseigné. C'est le champ à afficher côté site.
+
+```json Réponse 200 (extrait)
+{
+  "name": "Au Bistrot",
+  "business_type": "restaurant",
+  "public_category": "Restaurant français",
+  "category": "Restaurant français"
+}
+```
+
+<Warning>
+  **`category` est déprécié.** Il reste renvoyé à l'identique — c'est désormais un simple alias de `public_category` — mais il sera retiré dans une prochaine version de l'API. Remplacez vos lectures de `category` par `public_category` dès maintenant ; aucune autre adaptation n'est nécessaire.
+</Warning>
+
+Le champ `business_type` étant issu d'une liste fermée, traitez toute valeur inconnue comme un cas de repli plutôt que de l'afficher telle quelle : de nouveaux types pourront être ajoutés sans changement de version.
+
+## Établissements en brouillon masqués
+
+Un établissement qui n'a pas encore été activé (statut *brouillon*) n'est plus exposé publiquement, même si son API est activée et que la clé est valide :
+
+- les quatre endpoints de l'API répondent **`404` `Not found`** ;
+- les redirections `/r/master_menu` et `/r/menus` répondent **`404`**.
+
+Dès que l'établissement est activé, les réponses redeviennent normales. Ce comportement ne concerne que les établissements en cours de configuration ; aucune intégration en production n'est affectée.
+
+</Update>
+
+<Update label="Juin 2026" description="Renommage du réglage de redirection des fichiers de menu">
+
+Le réglage qui autorise la redirection `/r/menus` s'appelle désormais **`menu_redirect_enabled`** (auparavant `redirect_enabled`), pour le distinguer des autres redirections.
+
+Il s'agit d'un renommage interne du réglage : l'URL, les paramètres et le comportement de l'endpoint sont inchangés. Rien à modifier côté intégration — l'option reste opt-in et activable par l'administrateur de l'établissement.
+
+</Update>
+
 <Update label="Juin 2026" description="Lancement de l'API v1">
 
 Première version publique de la plateforme d'intégration Le Commis. Un établissement peut désormais diffuser ses informations vers des sites externes via trois canaux complémentaires.
