@@ -348,7 +348,7 @@ components:
           type: array
           items:
             type: string
-            example: https://app.lecommis.fr/menus/au-bistrot/menu-du-midi/web_fr.png
+            example: https://assets.lecommis.fr/gx6zb3zv77knakfkwl5l9knpj663
           description: URLs des fichiers du menu (un menu peut comporter plusieurs
             pages).
     MenuItem:
@@ -480,7 +480,7 @@ components:
         master_menu_url:
           type: string
           nullable: true
-          example: https://app.lecommis.fr/files/au-bistrot/carte-unifiee.pdf
+          example: https://assets.lecommis.fr/vz1razg4p19vi9og679k3qrkkl1d
           description: URL de la Carte unifiée (PDF combiné), null si absente.
         menus:
           type: array
@@ -576,4 +576,4 @@ components:
         logo_url:
           type: string
           nullable: true
-          example: https://app.lecommis.fr/files/au-bistrot/logo.png
+          example: https://assets.lecommis.fr/mh184ri4r118filxowr3cj3rs1ye
